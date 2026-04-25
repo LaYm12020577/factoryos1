@@ -455,7 +455,7 @@ function OrderModal({ order, onClose, onPaymentSaved, clients }) {
 }
 
 // ─── NEW ORDER MODAL ──────────────────────────────────────────
-function NewOrderModal({ clients, onClose, onSave }) {
+function NewOrderModal({ clients, orders, onClose, onSave }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
   const [productCode, setProductCode] = useState(ALL_PRODUCTS[0].code);
@@ -468,7 +468,13 @@ function NewOrderModal({ clients, onClose, onSave }) {
   const handleSave = () => {
     if (!qty || !clientId || !productCode) return;
     const newOrder = {
-      id: "ORD-" + Date.now().toString().slice(-6),
+      id: (() => {
+        const now = new Date();
+        const yy = String(now.getFullYear()).slice(-2);
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const seq = String(orders.length + 1).padStart(3, "0");
+        return `NW${yy}${mm}${seq}`;
+      })(),
       client: client.name,
       product: productCode,
       qty: parseInt(qty),
@@ -640,7 +646,7 @@ function Orders({ orders, setOrders, clients }) {
     <div>
       {toast && <Toast msg={toast} />}
       {selected && <OrderModal order={selected} onClose={() => setSelected(null)} onPaymentSaved={handlePaymentSaved} clients={clients} />}
-      {showNew && <NewOrderModal clients={clients} onClose={() => setShowNew(false)} onSave={handleNewOrder} />}
+      {showNew && <NewOrderModal clients={clients} orders={orders} onClose={() => setShowNew(false)} onSave={handleNewOrder} />}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <div style={S.pageTitle}>{T.orders}</div>
         <button style={S.btnPrimary} onClick={() => setShowNew(true)}>{T.newOrder}</button>
