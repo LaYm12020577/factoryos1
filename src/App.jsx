@@ -60,6 +60,8 @@ const TRANSLATIONS = {
     paymentType: "To'lov turi", paymentAmount: "Miqdor ($)", paymentDate: "Sana",
     cash: "💵 Naqd", wire: "🏦 O'tkazma", savedMsg: "Saqlandi ✓",
     addShipmentTitle: "Jo'natma qo'shish", noOrders: "Buyurtmalar yo'q",
+    filterProduct: "Mahsulot bo'yicha filtrlash", allProducts: "Barcha mahsulotlar",
+    addProduct: "+ Mahsulot qo'shish", models: "model", remove: "O'chirish",
   },
   ru: {
     dashboard: "Главная", orders: "Заказы", debts: "Долги",
@@ -108,6 +110,8 @@ const TRANSLATIONS = {
     paymentType: "Тип оплаты", paymentAmount: "Сумма ($)", paymentDate: "Дата",
     cash: "💵 Наличные", wire: "🏦 Перевод", savedMsg: "Сохранено ✓",
     addShipmentTitle: "Добавить поставку", noOrders: "Нет заказов",
+    filterProduct: "Фильтр по продукту", allProducts: "Все продукты",
+    addProduct: "+ Добавить продукт", models: "моделей", remove: "Удалить",
   },
   zh: {
     dashboard: "主页", orders: "订单", debts: "债务",
@@ -156,6 +160,8 @@ const TRANSLATIONS = {
     paymentType: "付款类型", paymentAmount: "金额 ($)", paymentDate: "日期",
     cash: "💵 现金", wire: "🏦 转账", savedMsg: "已保存 ✓",
     addShipmentTitle: "添加货运", noOrders: "暂无订单",
+    filterProduct: "按产品筛选", allProducts: "所有产品",
+    addProduct: "+ 添加产品", models: "个型号", remove: "删除",
   },
 };
 
@@ -269,11 +275,11 @@ const DEFAULT_CLIENTS = [
   { id: 5, name: "Azizbek", country: "🇺🇿 Uzbekistan", cashDebt: 10500, wireDebt: 9000, prices: Object.fromEntries(ALL_PRODUCTS.map(p => [p.code, parseFloat((p.single * 3.9).toFixed(2))])) },
 ];
 const DEFAULT_ORDERS = [
-  { id: "NW2604001", client: "Ozodbek", product: "NWS-ST-500C", qty: 120, total: 48000, cashPaid: 12000, wirePaid: 8500, status: "partial", date: "2026-04-10" },
-  { id: "NW2604002", client: "Abu Tashkent", product: "NWS-TE-500E", qty: 80, total: 22400, cashPaid: 11200, wirePaid: 11200, status: "paid", date: "2026-04-08" },
-  { id: "NW2604003", client: "Xushnudbek", product: "NWS-O-500D", qty: 200, total: 80000, cashPaid: 0, wirePaid: 20000, status: "partial", date: "2026-04-15" },
-  { id: "NW2604004", client: "Farhodjon", product: "NWS-B-500C2", qty: 60, total: 14400, cashPaid: 0, wirePaid: 0, status: "unpaid", date: "2026-04-18" },
-  { id: "NW2604005", client: "Azizbek", product: "NWS-BK-500C", qty: 150, total: 42000, cashPaid: 10500, wirePaid: 9000, status: "partial", date: "2026-04-20" },
+  { id: "NW2604001", client: "Ozodbek", items: [{ product: "NWS-ST-500C", qty: 120, unitPrice: 400 }], total: 48000, cashPaid: 12000, wirePaid: 8500, status: "partial", date: "2026-04-10" },
+  { id: "NW2604002", client: "Abu Tashkent", items: [{ product: "NWS-TE-500E", qty: 80, unitPrice: 280 }], total: 22400, cashPaid: 11200, wirePaid: 11200, status: "paid", date: "2026-04-08" },
+  { id: "NW2604003", client: "Xushnudbek", items: [{ product: "NWS-O-500D", qty: 100, unitPrice: 400 }, { product: "NWS-D-500C2", qty: 100, unitPrice: 400 }], total: 80000, cashPaid: 0, wirePaid: 20000, status: "partial", date: "2026-04-15" },
+  { id: "NW2604004", client: "Farhodjon", items: [{ product: "NWS-B-500C2", qty: 60, unitPrice: 240 }], total: 14400, cashPaid: 0, wirePaid: 0, status: "unpaid", date: "2026-04-18" },
+  { id: "NW2604005", client: "Azizbek", items: [{ product: "NWS-BK-500C", qty: 100, unitPrice: 280 }, { product: "NWS-BO-500CF", qty: 50, unitPrice: 280 }], total: 42000, cashPaid: 10500, wirePaid: 9000, status: "partial", date: "2026-04-20" },
 ];
 const DEFAULT_SHIPMENTS = [
   { id: "SHP-881", from: "🇨🇳 Guangzhou", items: "Aluminum billets (5T), Molds", eta: "2026-04-28", status: "in_transit" },
@@ -282,7 +288,15 @@ const DEFAULT_SHIPMENTS = [
   { id: "SHP-884", from: "🇰🇷 Seoul", items: "Special coating material", eta: "2026-04-25", status: "arrived" },
 ];
 
-// ─── TOAST ────────────────────────────────────────────────────
+// ─── NORMALIZE ORDERS (backward-compat with old single-product format) ─────
+const normalizeOrders = (orders) => orders.map(o => {
+  if (o.items) return o;
+  const unitPrice = o.qty > 0 ? Math.round(o.total / o.qty * 100) / 100 : 0;
+  const { product, qty, ...rest } = o;
+  return { ...rest, items: [{ product, qty, unitPrice }] };
+});
+
+
 function Toast({ msg }) {
   const C = useC(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   return <div style={S.toast}>{msg}</div>;
@@ -391,8 +405,31 @@ function OrderModal({ order, onClose, onPaymentSaved, clients }) {
               <div style={{ fontWeight: 700, fontSize: 14 }}>{order.client}</div>
             </div>
             <div style={{ background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{T.product.toUpperCase()} · {T.qty.toUpperCase()}</div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{order.product} <span style={{ color: C.muted, fontWeight: 400 }}>×{order.qty}</span></div>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{T.qty.toUpperCase()} · {T.total.toUpperCase()}</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{order.items.reduce((s, i) => s + i.qty, 0)} <span style={{ color: C.muted, fontWeight: 400 }}>pcs</span> · <span style={{ color: C.accent }}>${order.total.toLocaleString()}</span></div>
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6 }}>{T.product.toUpperCase()}</div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ ...S.table, fontSize: 13 }}>
+                <thead><tr>
+                  <th style={{ ...S.th, fontSize: 10 }}>{T.model}</th>
+                  <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.qty}</th>
+                  <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.unitPrice}</th>
+                  <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.total}</th>
+                </tr></thead>
+                <tbody>
+                  {order.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td style={{ ...S.td, padding: "7px 10px", fontWeight: 600, color: C.accent }}>{item.product}</td>
+                      <td style={{ ...S.td, padding: "7px 10px", textAlign: "right" }}>{item.qty}</td>
+                      <td style={{ ...S.td, padding: "7px 10px", textAlign: "right", color: C.muted }}>${item.unitPrice}</td>
+                      <td style={{ ...S.td, padding: "7px 10px", textAlign: "right", fontWeight: 700 }}>${(item.qty * item.unitPrice).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
@@ -458,15 +495,23 @@ function OrderModal({ order, onClose, onPaymentSaved, clients }) {
 function NewOrderModal({ clients, orders, onClose, onSave }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
-  const [productCode, setProductCode] = useState(ALL_PRODUCTS[0].code);
-  const [qty, setQty] = useState("");
+  const [items, setItems] = useState([{ product: ALL_PRODUCTS[0].code, qty: "" }]);
   const client = clients.find(c => c.id === Number(clientId));
-  const product = ALL_PRODUCTS.find(p => p.code === productCode);
-  const unitPrice = client?.prices[productCode] ?? 0;
-  const total = qty ? Math.round(parseFloat(qty) * unitPrice) : 0;
+
+  const addItem = () => setItems(prev => [...prev, { product: ALL_PRODUCTS[0].code, qty: "" }]);
+  const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const updateItem = (idx, field, val) => setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: val } : item));
+
+  const enrichedItems = items.map(item => ({
+    ...item,
+    unitPrice: client?.prices[item.product] ?? 0,
+    subtotal: Math.round((parseFloat(item.qty) || 0) * (client?.prices[item.product] ?? 0)),
+  }));
+  const total = enrichedItems.reduce((s, i) => s + i.subtotal, 0);
 
   const handleSave = () => {
-    if (!qty || !clientId || !productCode) return;
+    const validItems = enrichedItems.filter(i => parseInt(i.qty) > 0);
+    if (!clientId || validItems.length === 0) return;
     const newOrder = {
       id: (() => {
         const now = new Date();
@@ -476,8 +521,7 @@ function NewOrderModal({ clients, orders, onClose, onSave }) {
         return `NW${yy}${mm}${seq}`;
       })(),
       client: client.name,
-      product: productCode,
-      qty: parseInt(qty),
+      items: validItems.map(i => ({ product: i.product, qty: parseInt(i.qty), unitPrice: i.unitPrice })),
       total,
       cashPaid: 0,
       wirePaid: 0,
@@ -490,7 +534,7 @@ function NewOrderModal({ clients, orders, onClose, onSave }) {
 
   return (
     <div style={S.overlay} onClick={onClose}>
-      <div style={{ ...S.modal, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...S.modal, maxWidth: 520 }} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{T.newOrderTitle}</div>
           <button style={S.closeBtn} onClick={onClose}>×</button>
@@ -503,29 +547,62 @@ function NewOrderModal({ clients, orders, onClose, onSave }) {
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+
             <div>
-              <label style={S.label}>{T.selectProduct}</label>
-              <select style={S.select} value={productCode} onChange={e => setProductCode(e.target.value)}>
-                <optgroup label={T.aluminum}>{PRODUCTS_ALUM.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>
-                <optgroup label={T.bimetal}>{PRODUCTS_BIMETAL.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>
-              </select>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <label style={{ ...S.label, marginBottom: 0 }}>{T.product}</label>
+                <button style={S.btnSm(C.accent)} onClick={addItem}>{T.addProduct}</button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {items.map((item, idx) => {
+                  const unitPrice = client?.prices[item.product] ?? 0;
+                  const subtotal = Math.round((parseFloat(item.qty) || 0) * unitPrice);
+                  return (
+                    <div key={idx} style={{ background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>#{idx + 1}</span>
+                        {items.length > 1 && (
+                          <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", color: C.red, fontSize: 14, cursor: "pointer", padding: "0 4px" }}>✕</button>
+                        )}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
+                        <div>
+                          <label style={S.label}>{T.selectProduct}</label>
+                          <select style={S.select} value={item.product} onChange={e => updateItem(idx, "product", e.target.value)}>
+                            <optgroup label={T.aluminum}>{PRODUCTS_ALUM.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>
+                            <optgroup label={T.bimetal}>{PRODUCTS_BIMETAL.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>
+                          </select>
+                        </div>
+                        <div style={{ minWidth: 80 }}>
+                          <label style={S.label}>{T.qty}</label>
+                          <input style={S.input} type="number" placeholder="0" value={item.qty} onChange={e => updateItem(idx, "qty", e.target.value)} />
+                        </div>
+                      </div>
+                      {item.qty && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <div style={{ ...S.infoBox(C.muted), flex: 1, padding: "6px 10px" }}>
+                            <div style={{ fontSize: 10, color: C.muted }}>{T.unitPrice}</div>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>${unitPrice}</div>
+                          </div>
+                          <div style={{ ...S.infoBox(C.accent), flex: 1, padding: "6px 10px" }}>
+                            <div style={{ fontSize: 10, color: C.muted }}>{T.total}</div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: C.accent }}>${subtotal.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <label style={S.label}>{T.qty}</label>
-              <input style={S.input} type="number" placeholder="0" value={qty} onChange={e => setQty(e.target.value)} />
-            </div>
-            {qty && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div style={S.infoBox(C.muted)}>
-                  <div style={{ fontSize: 11, color: C.muted }}>{T.unitPrice}</div>
-                  <div style={{ fontWeight: 700 }}>${unitPrice}</div>
-                </div>
-                <div style={S.infoBox(C.accent)}>
-                  <div style={{ fontSize: 11, color: C.muted }}>{T.total}</div>
-                  <div style={{ fontWeight: 700, color: C.accent, fontSize: 18 }}>${total.toLocaleString()}</div>
-                </div>
+
+            {total > 0 && (
+              <div style={{ ...S.infoBox(C.accent), display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 600 }}>{T.total}</span>
+                <span style={{ fontWeight: 700, fontSize: 20, color: C.accent }}>${total.toLocaleString()}</span>
               </div>
             )}
+
             <div style={{ display: "flex", gap: 8 }}>
               <button style={S.btnPrimary} onClick={handleSave}>{T.save}</button>
               <button style={S.btn(C.muted)} onClick={onClose}>{T.cancel}</button>
@@ -612,11 +689,22 @@ function Dashboard({ orders, clients, shipments }) {
 // ─── ORDERS ──────────────────────────────────────────────────
 function Orders({ orders, setOrders, clients }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
-  const [filter, setFilter] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterClient, setFilterClient] = useState("all");
+  const [filterProduct, setFilterProduct] = useState("all");
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [toast, setToast] = useState(null);
-  const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
+
+  const allClients = [...new Set(orders.map(o => o.client))].sort();
+  const allProducts = [...new Set(orders.flatMap(o => o.items.map(i => i.product)))].sort();
+
+  const filtered = orders.filter(o => {
+    if (filterStatus !== "all" && o.status !== filterStatus) return false;
+    if (filterClient !== "all" && o.client !== filterClient) return false;
+    if (filterProduct !== "all" && !o.items.some(i => i.product === filterProduct)) return false;
+    return true;
+  });
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
 
@@ -642,6 +730,12 @@ function Orders({ orders, setOrders, clients }) {
     showToast(T.savedMsg);
   };
 
+  const hdrSelect = {
+    background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 5,
+    padding: "3px 5px", color: C.text, fontSize: 10, cursor: "pointer",
+    outline: "none", maxWidth: 120, marginTop: 4, display: "block",
+  };
+
   return (
     <div>
       {toast && <Toast msg={toast} />}
@@ -654,7 +748,7 @@ function Orders({ orders, setOrders, clients }) {
       <div style={S.subtitle}>{T.clickRow}</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         {[["all", C.accent], ["paid", C.green], ["partial", C.yellow], ["unpaid", C.red]].map(([f, col]) => (
-          <button key={f} onClick={() => setFilter(f)} style={{ ...S.btn(col), fontWeight: filter === f ? 700 : 500, opacity: filter === f ? 1 : 0.65 }}>{T[f]}</button>
+          <button key={f} onClick={() => setFilterStatus(f)} style={{ ...S.btn(col), fontWeight: filterStatus === f ? 700 : 500, opacity: filterStatus === f ? 1 : 0.65 }}>{T[f]}</button>
         ))}
       </div>
       {filtered.length === 0 ? (
@@ -663,7 +757,40 @@ function Orders({ orders, setOrders, clients }) {
         <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
           <div style={{ overflowX: "auto" }}>
             <table style={S.table}>
-              <thead><tr>{[T.orderId, T.client, T.product, T.qty, T.total, T.cashPaid, T.wirePaid, T.remaining, T.progress, T.status].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <thead>
+                <tr>
+                  <th style={S.th}>{T.orderId}</th>
+                  <th style={S.th}>
+                    {T.client}
+                    <select style={hdrSelect} value={filterClient} onChange={e => setFilterClient(e.target.value)} onClick={e => e.stopPropagation()}>
+                      <option value="all">{T.allClients}</option>
+                      {allClients.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </th>
+                  <th style={S.th}>
+                    {T.product}
+                    <select style={hdrSelect} value={filterProduct} onChange={e => setFilterProduct(e.target.value)} onClick={e => e.stopPropagation()}>
+                      <option value="all">{T.allProducts}</option>
+                      {allProducts.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </th>
+                  <th style={S.th}>{T.qty}</th>
+                  <th style={S.th}>{T.total}</th>
+                  <th style={S.th}>{T.cashPaid}</th>
+                  <th style={S.th}>{T.wirePaid}</th>
+                  <th style={S.th}>{T.remaining}</th>
+                  <th style={S.th}>{T.progress}</th>
+                  <th style={S.th}>
+                    {T.status}
+                    <select style={hdrSelect} value={filterStatus} onChange={e => setFilterStatus(e.target.value)} onClick={e => e.stopPropagation()}>
+                      <option value="all">{T.all}</option>
+                      <option value="paid">{T.paid}</option>
+                      <option value="partial">{T.partial}</option>
+                      <option value="unpaid">{T.unpaid}</option>
+                    </select>
+                  </th>
+                </tr>
+              </thead>
               <tbody>
                 {filtered.map(o => {
                   const paid = o.cashPaid + o.wirePaid;
@@ -672,13 +799,17 @@ function Orders({ orders, setOrders, clients }) {
                   const wp = Math.round(o.wirePaid / o.total * 100);
                   const rem = o.total - paid;
                   const sc = o.status === "paid" ? C.green : o.status === "partial" ? C.yellow : C.red;
+                  const totalQty = o.items.reduce((s, i) => s + i.qty, 0);
                   return (<tr key={o.id} onClick={() => setSelected(o)} style={{ cursor: "pointer" }}
                     onMouseEnter={e => e.currentTarget.style.background = `${C.accent}08`}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                     <td style={{ ...S.td, paddingLeft: 16 }}><span style={{ color: C.accent, fontWeight: 700 }}>{o.id}</span><div style={{ fontSize: 11, color: C.muted }}>{o.date}</div></td>
                     <td style={S.td}>{o.client}</td>
-                    <td style={S.td}><span style={{ color: C.muted, fontSize: 12 }}>{o.product}</span></td>
-                    <td style={S.td}>{o.qty}</td>
+                    <td style={S.td}>
+                      <span style={{ color: C.muted, fontSize: 12 }}>{o.items[0].product}</span>
+                      {o.items.length > 1 && <span style={{ fontSize: 11, color: C.accent, marginLeft: 4, fontWeight: 600 }}>+{o.items.length - 1} {T.models}</span>}
+                    </td>
+                    <td style={S.td}>{totalQty}</td>
                     <td style={S.td}><strong>${o.total.toLocaleString()}</strong></td>
                     <td style={S.td}><span style={{ color: C.green, fontWeight: 600 }}>${o.cashPaid.toLocaleString()}</span></td>
                     <td style={S.td}><span style={{ color: C.cyan, fontWeight: 600 }}>${o.wirePaid.toLocaleString()}</span></td>
@@ -986,7 +1117,7 @@ export default function App() {
   const [isLight, setIsLight] = useState(true);
   const [lang, setLang] = useState("uz");
   const [langOpen, setLangOpen] = useState(false);
-  const [orders, setOrders] = useState(() => load("fos_orders", DEFAULT_ORDERS));
+  const [orders, setOrders] = useState(() => normalizeOrders(load("fos_orders", DEFAULT_ORDERS)));
   const [clients, setClients] = useState(() => load("fos_clients", DEFAULT_CLIENTS));
   const [shipments, setShipments] = useState(() => load("fos_shipments", DEFAULT_SHIPMENTS));
   const dropdownRef = useRef(null);
