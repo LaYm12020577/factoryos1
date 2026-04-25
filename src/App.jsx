@@ -288,6 +288,27 @@ const DEFAULT_SHIPMENTS = [
   { id: "SHP-884", from: "🇰🇷 Seoul", items: "Special coating material", eta: "2026-04-25", status: "arrived" },
 ];
 
+// ─── COMPUTE DEBTS FROM ORDERS ───────────────────────────────
+// Returns { [clientName]: { cashDebt, wireDebt } } calculated from unpaid balances
+const computeClientDebts = (orders) => {
+  const debts = {};
+  for (const o of orders) {
+    const remaining = o.total - o.cashPaid - o.wirePaid;
+    if (remaining <= 0) continue;
+    if (!debts[o.client]) debts[o.client] = { cashDebt: 0, wireDebt: 0 };
+    const paid = o.cashPaid + o.wirePaid;
+    if (paid === 0) {
+      // fully unpaid — attribute all to cash debt (default payment type)
+      debts[o.client].cashDebt += remaining;
+    } else {
+      // split remaining proportionally based on how payments were made so far
+      debts[o.client].cashDebt += remaining * (o.cashPaid / paid);
+      debts[o.client].wireDebt += remaining * (o.wirePaid / paid);
+    }
+  }
+  return debts;
+};
+
 // ─── NORMALIZE ORDERS (backward-compat with old single-product format) ─────
 const normalizeOrders = (orders) => orders.map(o => {
   if (o.items) return o;
@@ -363,9 +384,8 @@ function PricelistModal({ clients, onClose }) {
 
 // ─── ORDER MODAL ─────────────────────────────────────────────
 function OrderModal({ order, onClose, onPaymentSaved, clients }) {
-  const C = useC(); const T = useT(); const lang = useLang();
+  const C = useC(); const T = useT();
   const L = C.bg === LIGHT.bg; const S = mk(C, L);
-  const [docLang, setDocLang] = useState(lang);
   const [showPay, setShowPay] = useState(false);
   const [payType, setPayType] = useState("cash");
   const [payAmount, setPayAmount] = useState("");
@@ -374,7 +394,6 @@ function OrderModal({ order, onClose, onPaymentSaved, clients }) {
   const cashPct = Math.round(order.cashPaid / order.total * 100);
   const wirePct = Math.round(order.wirePaid / order.total * 100);
   const sc = order.status === "paid" ? C.green : order.status === "partial" ? C.yellow : C.red;
-  const TDoc = TRANSLATIONS[docLang];
   const remaining = order.total - order.cashPaid - order.wirePaid;
 
   const handlePaySave = () => {
@@ -473,16 +492,10 @@ function OrderModal({ order, onClose, onPaymentSaved, clients }) {
           ) : null}
 
           <div style={S.divider} />
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, fontWeight: 500 }}>{T.docLang}</div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-            {[["uz","🇺🇿 UZ"],["ru","🇷🇺 RU"],["zh","🇨🇳 ZH"]].map(([k,v]) => (
-              <button key={k} onClick={() => setDocLang(k)} style={{ ...S.btnSm(C.accent), fontWeight: docLang === k ? 700 : 400, opacity: docLang === k ? 1 : 0.55 }}>{v}</button>
-            ))}
-          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button style={S.btnPrimary}>📄 {TDoc.generateInvoice}</button>
-            <button style={S.btn(C.cyan)}>📋 {TDoc.generateContract}</button>
-            <button style={S.btn(C.yellow)}>📊 {TDoc.generatePL}</button>
+            <button style={S.btnPrimary}>📄 {T.generateInvoice}</button>
+            <button style={S.btn(C.cyan)}>📋 {T.generateContract}</button>
+            <button style={S.btn(C.yellow)}>📊 {T.generatePL}</button>
             <button style={S.btn(C.green)} onClick={() => setShowPay(true)}>💳 {T.addPayment}</button>
           </div>
         </div>
@@ -619,7 +632,7 @@ function Dashboard({ orders, clients, shipments }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
   const totalPaid = orders.reduce((s, o) => s + o.cashPaid + o.wirePaid, 0);
-  const totalDebt = clients.reduce((s, c) => s + c.cashDebt + c.wireDebt, 0);
+  const totalDebt = orders.reduce((s, o) => s + Math.max(0, o.total - o.cashPaid - o.wirePaid), 0);
   const active = shipments.filter(s => s.status !== "arrived").length;
   const statusLabel = { ordered: T.ordered, in_transit: T.inTransit, customs: T.atCustoms, arrived: T.arrived };
   return (
@@ -834,12 +847,18 @@ function Orders({ orders, setOrders, clients }) {
 }
 
 // ─── DEBTS ───────────────────────────────────────────────────
-function Debts({ clients }) {
+function Debts({ clients, orders }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [filterClient, setFilterClient] = useState("all");
+  const clientDebts = computeClientDebts(orders);
   const shown = filterClient === "all" ? clients : clients.filter(c => c.name === filterClient);
-  const totalCash = shown.reduce((s, c) => s + c.cashDebt, 0);
-  const totalWire = shown.reduce((s, c) => s + c.wireDebt, 0);
+  // Pre-compute rounded debt values per shown client to ensure totals match displayed amounts
+  const shownDebts = shown.map(c => {
+    const cd = clientDebts[c.name] ?? { cashDebt: 0, wireDebt: 0 };
+    return { client: c, cashDebt: Math.round(cd.cashDebt), wireDebt: Math.round(cd.wireDebt) };
+  });
+  const totalCash = shownDebts.reduce((s, d) => s + d.cashDebt, 0);
+  const totalWire = shownDebts.reduce((s, d) => s + d.wireDebt, 0);
   return (
     <div>
       <div style={S.pageTitle}>{T.debtsTitle}</div>
@@ -855,8 +874,8 @@ function Debts({ clients }) {
           {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
       </div>
-      {shown.map(c => {
-        const total = c.cashDebt + c.wireDebt;
+      {shownDebts.map(({ client: c, cashDebt, wireDebt }) => {
+        const total = cashDebt + wireDebt;
         if (total === 0) return (
           <div key={c.id} style={{ ...S.card, marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -872,8 +891,8 @@ function Debts({ clients }) {
               <div style={{ textAlign: "right" }}><div style={{ fontWeight: 700, color: C.red, fontSize: L ? 20 : 17 }}>${total.toLocaleString()}</div><div style={{ fontSize: 12, color: C.muted }}>{T.totalDebtLabel}</div></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div style={S.infoBox(C.green)}><div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>{T.cashDebt}</div><div style={{ fontWeight: 700, color: C.green, fontSize: L ? 20 : 17 }}>${c.cashDebt.toLocaleString()}</div></div>
-              <div style={S.infoBox(C.cyan)}><div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>{T.wireDebt}</div><div style={{ fontWeight: 700, color: C.cyan, fontSize: L ? 20 : 17 }}>${c.wireDebt.toLocaleString()}</div></div>
+              <div style={S.infoBox(C.green)}><div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>{T.cashDebt}</div><div style={{ fontWeight: 700, color: C.green, fontSize: L ? 20 : 17 }}>${cashDebt.toLocaleString()}</div></div>
+              <div style={S.infoBox(C.cyan)}><div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>{T.wireDebt}</div><div style={{ fontWeight: 700, color: C.cyan, fontSize: L ? 20 : 17 }}>${wireDebt.toLocaleString()}</div></div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button style={S.btn(C.accent)}>{T.viewOrders}</button>
@@ -1136,7 +1155,7 @@ export default function App() {
   const pages = {
     dashboard: <Dashboard orders={orders} clients={clients} shipments={shipments} />,
     orders: <Orders orders={orders} setOrders={setOrders} clients={clients} />,
-    debts: <Debts clients={clients} />,
+    debts: <Debts clients={clients} orders={orders} />,
     shipments: <Shipments shipments={shipments} setShipments={setShipments} />,
     clients: <Clients clients={clients} setClients={setClients} />,
     products: <Products />,
