@@ -269,11 +269,11 @@ const DEFAULT_CLIENTS = [
   { id: 5, name: "Azizbek", country: "🇺🇿 Uzbekistan", cashDebt: 10500, wireDebt: 9000, prices: Object.fromEntries(ALL_PRODUCTS.map(p => [p.code, parseFloat((p.single * 3.9).toFixed(2))])) },
 ];
 const DEFAULT_ORDERS = [
-  { id: "ORD-2401", client: "Ozodbek", product: "NWS-ST-500C", qty: 120, total: 48000, cashPaid: 12000, wirePaid: 8500, status: "partial", date: "2026-04-10" },
-  { id: "ORD-2402", client: "Abu Tashkent", product: "NWS-TE-500E", qty: 80, total: 22400, cashPaid: 11200, wirePaid: 11200, status: "paid", date: "2026-04-08" },
-  { id: "ORD-2403", client: "Xushnudbek", product: "NWS-O-500D", qty: 200, total: 80000, cashPaid: 0, wirePaid: 20000, status: "partial", date: "2026-04-15" },
-  { id: "ORD-2404", client: "Farhodjon", product: "NWS-B-500C2", qty: 60, total: 14400, cashPaid: 0, wirePaid: 0, status: "unpaid", date: "2026-04-18" },
-  { id: "ORD-2405", client: "Azizbek", product: "NWS-BK-500C", qty: 150, total: 42000, cashPaid: 10500, wirePaid: 9000, status: "partial", date: "2026-04-20" },
+  { id: "NW2604001", client: "Ozodbek", product: "NWS-ST-500C", qty: 120, total: 48000, cashPaid: 12000, wirePaid: 8500, status: "partial", date: "2026-04-10" },
+  { id: "NW2604002", client: "Abu Tashkent", product: "NWS-TE-500E", qty: 80, total: 22400, cashPaid: 11200, wirePaid: 11200, status: "paid", date: "2026-04-08" },
+  { id: "NW2604003", client: "Xushnudbek", product: "NWS-O-500D", qty: 200, total: 80000, cashPaid: 0, wirePaid: 20000, status: "partial", date: "2026-04-15" },
+  { id: "NW2604004", client: "Farhodjon", product: "NWS-B-500C2", qty: 60, total: 14400, cashPaid: 0, wirePaid: 0, status: "unpaid", date: "2026-04-18" },
+  { id: "NW2604005", client: "Azizbek", product: "NWS-BK-500C", qty: 150, total: 42000, cashPaid: 10500, wirePaid: 9000, status: "partial", date: "2026-04-20" },
 ];
 const DEFAULT_SHIPMENTS = [
   { id: "SHP-881", from: "🇨🇳 Guangzhou", items: "Aluminum billets (5T), Molds", eta: "2026-04-28", status: "in_transit" },
