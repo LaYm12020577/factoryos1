@@ -26,7 +26,7 @@ const TRANSLATIONS = {
     total: "Jami", cashPaid: "💵 Naqd", wirePaid: "🏦 O'tkazma", remaining: "Qoldiq",
     progress: "Jarayon", status: "Holat",
     paymentProgress: "To'lov jarayoni", docLang: "Hujjat tili",
-    generateInvoice: "Hisob-faktura", generateContract: "Shartnoma",
+    generateInvoice: "Invoice", generateContract: "Shartnoma",
     generatePL: "Narx varaqasi", addPayment: "To'lov qo'shish",
     cashDebt: "Naqd qarz", wireDebt: "O'tkazma qarz", noDebt: "✓ Qarz yo'q",
     totalDebtLabel: "jami qarz", viewOrders: "Buyurtmalarni ko'rish", exportBtn: "Eksport",
@@ -62,6 +62,13 @@ const TRANSLATIONS = {
     addShipmentTitle: "Jo'natma qo'shish", noOrders: "Buyurtmalar yo'q",
     filterProduct: "Mahsulot bo'yicha filtrlash", allProducts: "Barcha mahsulotlar",
     addProduct: "+ Mahsulot qo'shish", models: "model", remove: "O'chirish",
+    deleteOrder: "O'chirish", editOrder: "Tahrirlash",
+    confirmDeleteTitle: "O'chirishni tasdiqlang", confirmDeleteMsg: "Bu buyurtmani o'chirishni xohlaysizmi?",
+    confirmYes: "Ha, o'chirish", confirmNo: "Bekor qilish",
+    clientInfoTitle: "Mijoz haqida ma'lumot", addClientTitle: "Yangi mijoz qo'shish",
+    clientNameLabel: "Mijoz ismi", clientCountryLabel: "Mamlakat",
+    priceMultiplier: "Narx koeffitsienti (× og'irlik)",
+    totalOrders: "Jami buyurtmalar", totalAmount: "Jami summa",
   },
   ru: {
     dashboard: "Главная", orders: "Заказы", debts: "Долги",
@@ -76,7 +83,7 @@ const TRANSLATIONS = {
     total: "Итого", cashPaid: "💵 Наличные", wirePaid: "🏦 Перевод", remaining: "Остаток",
     progress: "Прогресс", status: "Статус",
     paymentProgress: "Прогресс оплаты", docLang: "Язык документа",
-    generateInvoice: "Счёт-фактура", generateContract: "Договор",
+    generateInvoice: "Invoice", generateContract: "Договор",
     generatePL: "Прайс-лист", addPayment: "Добавить оплату",
     cashDebt: "Долг наличными", wireDebt: "Долг переводом", noDebt: "✓ Нет долга",
     totalDebtLabel: "общий долг", viewOrders: "Смотреть заказы", exportBtn: "Экспорт",
@@ -112,6 +119,13 @@ const TRANSLATIONS = {
     addShipmentTitle: "Добавить поставку", noOrders: "Нет заказов",
     filterProduct: "Фильтр по продукту", allProducts: "Все продукты",
     addProduct: "+ Добавить продукт", models: "моделей", remove: "Удалить",
+    deleteOrder: "Удалить", editOrder: "Редактировать",
+    confirmDeleteTitle: "Подтверждение удаления", confirmDeleteMsg: "Вы действительно хотите удалить этот заказ?",
+    confirmYes: "Да, удалить", confirmNo: "Отмена",
+    clientInfoTitle: "Информация о клиенте", addClientTitle: "Добавить клиента",
+    clientNameLabel: "Имя клиента", clientCountryLabel: "Страна",
+    priceMultiplier: "Ценовой коэффициент (× вес)",
+    totalOrders: "Всего заказов", totalAmount: "Общая сумма",
   },
   zh: {
     dashboard: "主页", orders: "订单", debts: "债务",
@@ -126,7 +140,7 @@ const TRANSLATIONS = {
     total: "合计", cashPaid: "💵 现金", wirePaid: "🏦 转账", remaining: "余额",
     progress: "进度", status: "状态",
     paymentProgress: "付款进度", docLang: "文件语言",
-    generateInvoice: "发票", generateContract: "合同",
+    generateInvoice: "Invoice", generateContract: "合同",
     generatePL: "价格表", addPayment: "添加付款",
     cashDebt: "现金欠款", wireDebt: "转账欠款", noDebt: "✓ 无欠款",
     totalDebtLabel: "总欠款", viewOrders: "查看订单", exportBtn: "导出",
@@ -162,6 +176,13 @@ const TRANSLATIONS = {
     addShipmentTitle: "添加货运", noOrders: "暂无订单",
     filterProduct: "按产品筛选", allProducts: "所有产品",
     addProduct: "+ 添加产品", models: "个型号", remove: "删除",
+    deleteOrder: "删除", editOrder: "编辑",
+    confirmDeleteTitle: "确认删除", confirmDeleteMsg: "确定要删除此订单吗？",
+    confirmYes: "确认删除", confirmNo: "取消",
+    clientInfoTitle: "客户详情", addClientTitle: "添加客户",
+    clientNameLabel: "客户姓名", clientCountryLabel: "国家",
+    priceMultiplier: "价格系数（× 单片重）",
+    totalOrders: "总订单数", totalAmount: "总金额",
   },
 };
 
@@ -323,6 +344,28 @@ function Toast({ msg }) {
   return <div style={S.toast}>{msg}</div>;
 }
 
+// ─── CONFIRM MODAL ────────────────────────────────────────────
+function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, onCancel }) {
+  const C = useC(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
+  return (
+    <div style={{ ...S.overlay, zIndex: 300 }} onClick={onCancel}>
+      <div style={{ ...S.modal, maxWidth: 400, marginTop: 80 }} onClick={e => e.stopPropagation()}>
+        <div style={S.modalHeader}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{title}</div>
+          <button style={S.closeBtn} onClick={onCancel}>×</button>
+        </div>
+        <div style={S.modalBody}>
+          <div style={{ marginBottom: 20, color: C.text, fontSize: 14 }}>{message}</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={{ ...S.btn(C.red), flex: 1, fontWeight: 700 }} onClick={onConfirm}>{confirmLabel}</button>
+            <button style={{ ...S.btn(C.muted), flex: 1 }} onClick={onCancel}>{cancelLabel}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PRICELIST MODAL ─────────────────────────────────────────
 function PricelistModal({ clients, onClose }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
@@ -383,7 +426,7 @@ function PricelistModal({ clients, onClose }) {
 }
 
 // ─── ORDER MODAL ─────────────────────────────────────────────
-function OrderModal({ order, onClose, onPaymentSaved, clients }) {
+function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients }) {
   const C = useC(); const T = useT();
   const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [showPay, setShowPay] = useState(false);
@@ -414,6 +457,8 @@ function OrderModal({ order, onClose, onPaymentSaved, clients }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={S.badge(sc)}>{T[order.status] || order.status}</span>
+            <button style={{ ...S.btnSm(C.accent) }} onClick={() => onEdit(order)}>✏️ {T.editOrder}</button>
+            <button style={{ ...S.btnSm(C.red) }} onClick={() => onDelete(order.id)}>🗑 {T.deleteOrder}</button>
             <button style={S.closeBtn} onClick={onClose}>×</button>
           </div>
         </div>
@@ -504,11 +549,21 @@ function OrderModal({ order, onClose, onPaymentSaved, clients }) {
   );
 }
 
-// ─── NEW ORDER MODAL ──────────────────────────────────────────
-function NewOrderModal({ clients, orders, onClose, onSave }) {
+// ─── NEW / EDIT ORDER MODAL ───────────────────────────────────
+function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
-  const [clientId, setClientId] = useState(clients[0]?.id ?? "");
-  const [items, setItems] = useState([{ product: ALL_PRODUCTS[0].code, qty: "" }]);
+  const isEdit = !!initialOrder;
+  const [clientId, setClientId] = useState(() => {
+    if (initialOrder) {
+      const c = clients.find(c => c.name === initialOrder.client);
+      return c?.id ?? clients[0]?.id ?? "";
+    }
+    return clients[0]?.id ?? "";
+  });
+  const [items, setItems] = useState(() => {
+    if (initialOrder) return initialOrder.items.map(i => ({ product: i.product, qty: String(i.qty) }));
+    return [{ product: ALL_PRODUCTS[0].code, qty: "" }];
+  });
   const client = clients.find(c => c.id === Number(clientId));
 
   const addItem = () => setItems(prev => [...prev, { product: ALL_PRODUCTS[0].code, qty: "" }]);
@@ -525,23 +580,30 @@ function NewOrderModal({ clients, orders, onClose, onSave }) {
   const handleSave = () => {
     const validItems = enrichedItems.filter(i => parseInt(i.qty) > 0);
     if (!clientId || validItems.length === 0) return;
-    const newOrder = {
-      id: (() => {
-        const now = new Date();
-        const yy = String(now.getFullYear()).slice(-2);
-        const mm = String(now.getMonth() + 1).padStart(2, "0");
-        const seq = String(orders.length + 1).padStart(3, "0");
-        return `NW${yy}${mm}${seq}`;
-      })(),
-      client: client.name,
-      items: validItems.map(i => ({ product: i.product, qty: parseInt(i.qty), unitPrice: i.unitPrice })),
-      total,
-      cashPaid: 0,
-      wirePaid: 0,
-      status: "unpaid",
-      date: new Date().toISOString().slice(0, 10),
-    };
-    onSave(newOrder);
+    const mappedItems = validItems.map(i => ({ product: i.product, qty: parseInt(i.qty), unitPrice: i.unitPrice }));
+    if (isEdit) {
+      const newStatus = initialOrder.cashPaid + initialOrder.wirePaid >= total ? "paid"
+        : initialOrder.cashPaid + initialOrder.wirePaid > 0 ? "partial" : "unpaid";
+      onSave({ ...initialOrder, client: client.name, items: mappedItems, total, status: newStatus });
+    } else {
+      const newOrder = {
+        id: (() => {
+          const now = new Date();
+          const yy = String(now.getFullYear()).slice(-2);
+          const mm = String(now.getMonth() + 1).padStart(2, "0");
+          const seq = String(orders.length + 1).padStart(3, "0");
+          return `NW${yy}${mm}${seq}`;
+        })(),
+        client: client.name,
+        items: mappedItems,
+        total,
+        cashPaid: 0,
+        wirePaid: 0,
+        status: "unpaid",
+        date: new Date().toISOString().slice(0, 10),
+      };
+      onSave(newOrder);
+    }
     onClose();
   };
 
@@ -549,7 +611,7 @@ function NewOrderModal({ clients, orders, onClose, onSave }) {
     <div style={S.overlay} onClick={onClose}>
       <div style={{ ...S.modal, maxWidth: 520 }} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{T.newOrderTitle}</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{isEdit ? `✏️ ${T.editOrder}: ${initialOrder.id}` : T.newOrderTitle}</div>
           <button style={S.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={S.modalBody}>
@@ -707,6 +769,8 @@ function Orders({ orders, setOrders, clients }) {
   const [filterProduct, setFilterProduct] = useState("all");
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [toast, setToast] = useState(null);
 
   const allClients = [...new Set(orders.map(o => o.client))].sort();
@@ -743,6 +807,25 @@ function Orders({ orders, setOrders, clients }) {
     showToast(T.savedMsg);
   };
 
+  const handleEditOrder = (updatedOrder) => {
+    setOrders(prev => {
+      const n = prev.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+      save("fos_orders", n); return n;
+    });
+    setSelected(null);
+    showToast(T.savedMsg);
+  };
+
+  const handleDeleteConfirmed = () => {
+    setOrders(prev => {
+      const n = prev.filter(o => o.id !== confirmDeleteId);
+      save("fos_orders", n); return n;
+    });
+    setConfirmDeleteId(null);
+    setSelected(null);
+    showToast(T.savedMsg);
+  };
+
   const hdrSelect = {
     background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 5,
     padding: "3px 5px", color: C.text, fontSize: 10, cursor: "pointer",
@@ -752,8 +835,36 @@ function Orders({ orders, setOrders, clients }) {
   return (
     <div>
       {toast && <Toast msg={toast} />}
-      {selected && <OrderModal order={selected} onClose={() => setSelected(null)} onPaymentSaved={handlePaymentSaved} clients={clients} />}
+      {selected && !editingOrder && (
+        <OrderModal
+          order={selected}
+          onClose={() => setSelected(null)}
+          onPaymentSaved={handlePaymentSaved}
+          onEdit={(o) => { setEditingOrder(o); setSelected(null); }}
+          onDelete={(id) => setConfirmDeleteId(id)}
+          clients={clients}
+        />
+      )}
+      {confirmDeleteId && (
+        <ConfirmModal
+          title={T.confirmDeleteTitle}
+          message={T.confirmDeleteMsg}
+          confirmLabel={T.confirmYes}
+          cancelLabel={T.confirmNo}
+          onConfirm={handleDeleteConfirmed}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
+      )}
       {showNew && <NewOrderModal clients={clients} orders={orders} onClose={() => setShowNew(false)} onSave={handleNewOrder} />}
+      {editingOrder && (
+        <NewOrderModal
+          clients={clients}
+          orders={orders}
+          onClose={() => setEditingOrder(null)}
+          onSave={handleEditOrder}
+          initialOrder={editingOrder}
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <div style={S.pageTitle}>{T.orders}</div>
         <button style={S.btnPrimary} onClick={() => setShowNew(true)}>{T.newOrder}</button>
@@ -991,8 +1102,173 @@ function Shipments({ shipments, setShipments }) {
   );
 }
 
+// ─── CLIENT INFO MODAL ───────────────────────────────────────
+function ClientInfoModal({ client, orders, onClose }) {
+  const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
+  const clientOrders = orders.filter(o => o.client === client.name);
+  const totalAmount = clientOrders.reduce((s, o) => s + o.total, 0);
+  const totalPaid = clientOrders.reduce((s, o) => s + o.cashPaid + o.wirePaid, 0);
+  const totalDebt = Math.max(0, totalAmount - totalPaid);
+
+  const generateContract = () => {
+    const today = new Date().toLocaleDateString("en-GB");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Contract – ${client.name}</title>
+    <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#111}
+    h1{text-align:center;font-size:22px;margin-bottom:4px}h2{font-size:15px;margin-top:28px;border-bottom:1px solid #ccc;padding-bottom:4px}
+    .meta{text-align:center;color:#555;font-size:13px;margin-bottom:28px}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+    th{background:#f0f4fb;padding:8px 10px;text-align:left;border:1px solid #dce3f0}
+    td{padding:8px 10px;border:1px solid #dce3f0}
+    .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:60px}
+    .sig-box{border-top:1px solid #000;padding-top:8px;font-size:13px}
+    </style></head><body>
+    <h1>SUPPLY CONTRACT</h1>
+    <div class="meta">No. FC-${Date.now().toString().slice(-6)} &nbsp;|&nbsp; Date: ${today}</div>
+    <h2>1. Parties</h2>
+    <p><strong>Supplier:</strong> FactoryOS Industrial Co.</p>
+    <p><strong>Buyer:</strong> ${client.name} &nbsp; (${client.country})</p>
+    <h2>2. Subject</h2>
+    <p>The Supplier agrees to supply aluminum and/or bimetal radiators as per individual order specifications agreed by both parties.</p>
+    <h2>3. Order Summary</h2>
+    <table><tr><th>Orders</th><th>Total Amount</th><th>Paid</th><th>Outstanding</th></tr>
+    <tr><td>${clientOrders.length}</td><td>$${totalAmount.toLocaleString()}</td><td>$${totalPaid.toLocaleString()}</td><td>$${totalDebt.toLocaleString()}</td></tr></table>
+    <h2>4. Payment Terms</h2>
+    <p>Payment is due within 30 days of delivery. Late payments are subject to 1.5% monthly interest. Cash and wire transfer accepted.</p>
+    <h2>5. Delivery</h2>
+    <p>Delivery terms and timelines are specified per order. Risk transfers upon handover to the carrier.</p>
+    <h2>6. Validity</h2>
+    <p>This contract is valid for 12 months from the date of signing.</p>
+    <div class="sig">
+      <div class="sig-box"><strong>Supplier:</strong> FactoryOS<br/><br/>Signature: _______________<br/>Date: ${today}</div>
+      <div class="sig-box"><strong>Buyer:</strong> ${client.name}<br/><br/>Signature: _______________<br/>Date: _______________</div>
+    </div></body></html>`;
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); win.print(); }
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal, maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+        <div style={S.modalHeader}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 18 }}>{client.name}</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{client.country}</div>
+          </div>
+          <button style={S.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <div style={S.modalBody}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+            <div style={S.infoBox(C.accent)}>
+              <div style={{ fontSize: 11, color: C.muted }}>{T.totalOrders}</div>
+              <div style={{ fontWeight: 700, fontSize: 22, color: C.accent }}>{clientOrders.length}</div>
+            </div>
+            <div style={S.infoBox(C.green)}>
+              <div style={{ fontSize: 11, color: C.muted }}>{T.totalAmount}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: C.green }}>${totalAmount.toLocaleString()}</div>
+            </div>
+            <div style={S.infoBox(C.red)}>
+              <div style={{ fontSize: 11, color: C.muted }}>{T.totalDebt}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: C.red }}>${totalDebt.toLocaleString()}</div>
+            </div>
+          </div>
+          {clientOrders.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 8 }}>{T.recentOrders}</div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ ...S.table, fontSize: 12 }}>
+                  <thead><tr>
+                    <th style={{ ...S.th, fontSize: 10 }}>{T.orderId}</th>
+                    <th style={{ ...S.th, fontSize: 10 }}>{T.date ?? "Date"}</th>
+                    <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.total}</th>
+                    <th style={{ ...S.th, fontSize: 10 }}>{T.status}</th>
+                  </tr></thead>
+                  <tbody>
+                    {clientOrders.slice(0, 5).map(o => {
+                      const sc = o.status === "paid" ? C.green : o.status === "partial" ? C.yellow : C.red;
+                      return (
+                        <tr key={o.id}>
+                          <td style={{ ...S.td, padding: "6px 10px", color: C.accent, fontWeight: 700 }}>{o.id}</td>
+                          <td style={{ ...S.td, padding: "6px 10px", color: C.muted }}>{o.date}</td>
+                          <td style={{ ...S.td, padding: "6px 10px", textAlign: "right", fontWeight: 700 }}>${o.total.toLocaleString()}</td>
+                          <td style={{ ...S.td, padding: "6px 10px" }}><span style={S.badge(sc)}>{T[o.status] || o.status}</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <div style={S.divider} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 14 }}>
+            <button style={S.btnPrimary} onClick={generateContract}>📋 {T.generateContract}</button>
+            <button style={S.btn(C.accent)}>📄 {T.generateInvoice}</button>
+            <button style={S.btn(C.yellow)}>{T.genPricelist}</button>
+            <button style={S.btn(C.muted)}>{T.exportBtn}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ADD CLIENT MODAL ─────────────────────────────────────────
+function AddClientModal({ onClose, onSave }) {
+  const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
+  const [name, setName] = useState("");
+  const [country, setCountry] = useState("");
+  const [multiplier, setMultiplier] = useState("3.8");
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    const mult = parseFloat(multiplier) || 3.8;
+    const newClient = {
+      id: Date.now(),
+      name: name.trim(),
+      country: country.trim() || "🌍 Unknown",
+      cashDebt: 0,
+      wireDebt: 0,
+      prices: Object.fromEntries(ALL_PRODUCTS.map(p => [p.code, parseFloat((p.single * mult).toFixed(2))])),
+    };
+    onSave(newClient);
+    onClose();
+  };
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+        <div style={S.modalHeader}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{T.addClientTitle}</div>
+          <button style={S.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <div style={S.modalBody}>
+          <div style={S.col}>
+            <div>
+              <label style={S.label}>{T.clientNameLabel}</label>
+              <input style={S.input} placeholder="e.g. Ozodbek" value={name} onChange={e => setName(e.target.value)} />
+            </div>
+            <div>
+              <label style={S.label}>{T.clientCountryLabel}</label>
+              <input style={S.input} placeholder="🇺🇿 Uzbekistan" value={country} onChange={e => setCountry(e.target.value)} />
+            </div>
+            <div>
+              <label style={S.label}>{T.priceMultiplier}</label>
+              <input style={S.input} type="number" step="0.1" min="1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>× single weight (e.g. 3.8 → price = weight × 3.8)</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={S.btnPrimary} onClick={handleSave}>{T.save}</button>
+              <button style={S.btn(C.muted)} onClick={onClose}>{T.cancel}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── CLIENTS ─────────────────────────────────────────────────
-function Clients({ clients, setClients }) {
+function Clients({ clients, setClients, orders }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [editingId, setEditingId] = useState(null);
   const [editPrices, setEditPrices] = useState({});
@@ -1000,6 +1276,8 @@ function Clients({ clients, setClients }) {
   const [showPL, setShowPL] = useState(false);
   const [plTab, setPlTab] = useState("alum");
   const [toast, setToast] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showAddClient, setShowAddClient] = useState(false);
 
   const startEdit = (c) => { setEditingId(c.id); setEditPrices({ ...c.prices }); setExpandedId(c.id); };
   const saveEdit = (id) => {
@@ -1008,15 +1286,33 @@ function Clients({ clients, setClients }) {
     setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
   };
 
+  const handleAddClient = (newClient) => {
+    setClients(prev => { const n = [...prev, newClient]; save("fos_clients", n); return n; });
+    setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
+  };
+
   return (
     <div>
       {toast && <Toast msg={toast} />}
       {showPL && <PricelistModal clients={clients} onClose={() => setShowPL(false)} />}
+      {selectedClient && (
+        <ClientInfoModal
+          client={selectedClient}
+          orders={orders}
+          onClose={() => setSelectedClient(null)}
+        />
+      )}
+      {showAddClient && (
+        <AddClientModal
+          onClose={() => setShowAddClient(false)}
+          onSave={handleAddClient}
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <div style={S.pageTitle}>{T.clientsTitle}</div>
         <div style={{ display: "flex", gap: 8 }}>
           <button style={S.btn(C.yellow)} onClick={() => setShowPL(true)}>{T.genPricelist}</button>
-          <button style={S.btnPrimary}>{T.addClient}</button>
+          <button style={S.btnPrimary} onClick={() => setShowAddClient(true)}>{T.addClient}</button>
         </div>
       </div>
       <div style={S.subtitle}>{T.clientsSubtitle}</div>
@@ -1032,6 +1328,7 @@ function Clients({ clients, setClients }) {
                 <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{c.country}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button style={S.btnSm(C.cyan)} onClick={e => { e.stopPropagation(); setSelectedClient(c); }}>ℹ️ {T.clientInfoTitle}</button>
                 {!isEditing && <button style={S.btnSm(C.accent)} onClick={e => { e.stopPropagation(); startEdit(c); }}>{T.editPrices}</button>}
                 <span style={{ color: C.muted, fontSize: 16 }}>{isExpanded ? "▲" : "▼"}</span>
               </div>
@@ -1157,7 +1454,7 @@ export default function App() {
     orders: <Orders orders={orders} setOrders={setOrders} clients={clients} />,
     debts: <Debts clients={clients} orders={orders} />,
     shipments: <Shipments shipments={shipments} setShipments={setShipments} />,
-    clients: <Clients clients={clients} setClients={setClients} />,
+    clients: <Clients clients={clients} setClients={setClients} orders={orders} />,
     products: <Products />,
   };
 
