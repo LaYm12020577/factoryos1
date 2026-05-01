@@ -69,6 +69,13 @@ const TRANSLATIONS = {
     clientNameLabel: "Mijoz ismi", clientCountryLabel: "Mamlakat",
     priceMultiplier: "Narx koeffitsienti (× og'irlik)",
     totalOrders: "Jami buyurtmalar", totalAmount: "Jami summa",
+    generateNakladnaya: "Nakladnoy",
+    editClient: "Tahrirlash", deleteClient: "O'chirish",
+    confirmDeleteClientTitle: "Mijozni o'chirish", confirmDeleteClientMsg: "Bu mijozni o'chirishni xohlaysizmi?",
+    clientAddress: "Manzil", clientPhone: "Telefon", clientBank: "Bank nomi",
+    clientBankAccount: "Hisob raqam", clientBankSwift: "SWIFT kod",
+    optionalFields: "Qo'shimcha ma'lumotlar (ixtiyoriy)",
+    recentlyUsed: "Yaqinda ishlatilgan", searchCountry: "Mamlakat qidirish...",
   },
   ru: {
     dashboard: "Главная", orders: "Заказы", debts: "Долги",
@@ -126,6 +133,13 @@ const TRANSLATIONS = {
     clientNameLabel: "Имя клиента", clientCountryLabel: "Страна",
     priceMultiplier: "Ценовой коэффициент (× вес)",
     totalOrders: "Всего заказов", totalAmount: "Общая сумма",
+    generateNakladnaya: "Накладная",
+    editClient: "Редактировать", deleteClient: "Удалить",
+    confirmDeleteClientTitle: "Удалить клиента", confirmDeleteClientMsg: "Вы действительно хотите удалить этого клиента?",
+    clientAddress: "Адрес", clientPhone: "Телефон", clientBank: "Банк",
+    clientBankAccount: "Номер счёта", clientBankSwift: "SWIFT-код",
+    optionalFields: "Дополнительная информация (необязательно)",
+    recentlyUsed: "Недавно использованные", searchCountry: "Поиск страны...",
   },
   zh: {
     dashboard: "主页", orders: "订单", debts: "债务",
@@ -183,6 +197,13 @@ const TRANSLATIONS = {
     clientNameLabel: "客户姓名", clientCountryLabel: "国家",
     priceMultiplier: "价格系数（× 单片重）",
     totalOrders: "总订单数", totalAmount: "总金额",
+    generateNakladnaya: "送货单",
+    editClient: "编辑", deleteClient: "删除",
+    confirmDeleteClientTitle: "删除客户", confirmDeleteClientMsg: "确定要删除此客户吗？",
+    clientAddress: "地址", clientPhone: "电话", clientBank: "银行名称",
+    clientBankAccount: "账号", clientBankSwift: "SWIFT代码",
+    optionalFields: "附加信息（可选）",
+    recentlyUsed: "最近使用", searchCountry: "搜索国家...",
   },
 };
 
@@ -287,6 +308,32 @@ const PRODUCTS_BIMETAL = [
 const ALL_PRODUCTS = [...PRODUCTS_ALUM, ...PRODUCTS_BIMETAL];
 const TAX_RATE = 0.10;
 
+// ─── COUNTRY LIST ─────────────────────────────────────────────
+const COUNTRIES = [
+  "🇺🇿 Uzbekistan", "🇷🇺 Russia", "🇨🇳 China", "🇹🇷 Turkey",
+  "🇰🇿 Kazakhstan", "🇹🇯 Tajikistan", "🇰🇬 Kyrgyzstan", "🇦🇿 Azerbaijan",
+  "🇬🇪 Georgia", "🇺🇦 Ukraine", "🇦🇲 Armenia", "🇧🇾 Belarus",
+  "🇹🇲 Turkmenistan", "🇲🇳 Mongolia", "🇦🇫 Afghanistan",
+  "🇩🇪 Germany", "🇫🇷 France", "🇬🇧 United Kingdom", "🇮🇹 Italy",
+  "🇪🇸 Spain", "🇵🇱 Poland", "🇳🇱 Netherlands", "🇨🇿 Czech Republic",
+  "🇷🇴 Romania", "🇭🇺 Hungary", "🇸🇰 Slovakia", "🇧🇬 Bulgaria",
+  "🇷🇸 Serbia", "🇭🇷 Croatia", "🇲🇩 Moldova", "🇱🇻 Latvia",
+  "🇱🇹 Lithuania", "🇪🇪 Estonia", "🇨🇭 Switzerland", "🇦🇹 Austria",
+  "🇧🇪 Belgium", "🇵🇹 Portugal", "🇸🇪 Sweden", "🇳🇴 Norway",
+  "🇫🇮 Finland", "🇩🇰 Denmark",
+  "🇮🇷 Iran", "🇮🇶 Iraq", "🇸🇦 Saudi Arabia", "🇦🇪 UAE",
+  "🇮🇱 Israel", "🇯🇴 Jordan", "🇱🇧 Lebanon", "🇸🇾 Syria",
+  "🇵🇰 Pakistan", "🇮🇳 India", "🇧🇩 Bangladesh",
+  "🇯🇵 Japan", "🇰🇷 South Korea", "🇻🇳 Vietnam", "🇹🇭 Thailand",
+  "🇲🇾 Malaysia", "🇮🇩 Indonesia", "🇵🇭 Philippines",
+  "🇸🇬 Singapore", "🇭🇰 Hong Kong",
+  "🇺🇸 USA", "🇨🇦 Canada", "🇲🇽 Mexico",
+  "🇧🇷 Brazil", "🇦🇷 Argentina",
+  "🇦🇺 Australia", "🇳🇿 New Zealand",
+  "🇿🇦 South Africa", "🇪🇬 Egypt", "🇲🇦 Morocco", "🇩🇿 Algeria",
+  "🇳🇬 Nigeria", "🇰🇪 Kenya",
+];
+
 // ─── DEFAULT DATA ─────────────────────────────────────────────
 const DEFAULT_CLIENTS = [
   { id: 1, name: "Ozodbek", country: "🇺🇿 Uzbekistan", cashDebt: 12000, wireDebt: 8500, prices: Object.fromEntries(ALL_PRODUCTS.map(p => [p.code, parseFloat((p.single * 3.8).toFixed(2))])) },
@@ -362,6 +409,64 @@ function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, on
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── COUNTRY SELECT ──────────────────────────────────────────
+function CountrySelect({ value, onChange }) {
+  const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
+  const [search, setSearch] = useState(value || "");
+  const [open, setOpen] = useState(false);
+  const [recent, setRecent] = useState(() => load("fos_recent_countries", []));
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = COUNTRIES.filter(c => c.toLowerCase().includes(search.toLowerCase()));
+  const filteredRecent = recent.filter(c => c.toLowerCase().includes(search.toLowerCase()));
+  const filteredOthers = filtered.filter(c => !recent.includes(c));
+
+  const select = (country) => {
+    onChange(country);
+    setSearch(country);
+    setOpen(false);
+    const newRecent = [country, ...recent.filter(c => c !== country)].slice(0, 5);
+    setRecent(newRecent);
+    save("fos_recent_countries", newRecent);
+  };
+
+  const dropItem = (country, isRecent) => (
+    <div key={country} onClick={() => select(country)}
+      style={{ padding: "9px 14px", fontSize: 13, cursor: "pointer", color: C.text, display: "flex", alignItems: "center", gap: 6 }}
+      onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}12`; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+      {isRecent && <span style={{ fontSize: 10, color: C.yellow }}>★</span>}{country}
+    </div>
+  );
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <input style={S.input} placeholder={T.searchCountry || "Search country..."} value={search}
+        onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)} />
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadow, zIndex: 600, maxHeight: 220, overflowY: "auto" }}>
+          {filteredRecent.length > 0 && (<>
+            <div style={{ padding: "5px 14px 4px", fontSize: 10, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: `1px solid ${C.border}` }}>{T.recentlyUsed || "Recently used"}</div>
+            {filteredRecent.map(c => dropItem(c, true))}
+            {filteredOthers.length > 0 && <div style={{ height: 1, background: C.border }} />}
+          </>)}
+          {filteredOthers.map(c => dropItem(c, false))}
+          {filtered.length === 0 && (
+            <div style={{ padding: "12px 14px", fontSize: 13, color: C.muted, textAlign: "center" }}>No results</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -539,7 +644,7 @@ function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients 
           <div style={S.divider} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <button style={S.btnPrimary}>📄 {T.generateInvoice}</button>
-            <button style={S.btn(C.cyan)}>📋 {T.generateContract}</button>
+            <button style={S.btn(C.cyan)}>📋 {T.generateNakladnaya}</button>
             <button style={S.btn(C.yellow)}>📊 {T.generatePL}</button>
             <button style={S.btn(C.green)} onClick={() => setShowPay(true)}>💳 {T.addPayment}</button>
           </div>
@@ -1212,50 +1317,84 @@ function ClientInfoModal({ client, orders, onClose }) {
   );
 }
 
-// ─── ADD CLIENT MODAL ─────────────────────────────────────────
-function AddClientModal({ onClose, onSave }) {
+// ─── ADD / EDIT CLIENT MODAL ──────────────────────────────────
+function AddClientModal({ onClose, onSave, initialClient }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
-  const [name, setName] = useState("");
-  const [country, setCountry] = useState("");
+  const isEdit = !!initialClient;
+  const [name, setName] = useState(initialClient?.name ?? "");
+  const [country, setCountry] = useState(initialClient?.country ?? "");
   const [multiplier, setMultiplier] = useState("3.8");
+  const [address, setAddress] = useState(initialClient?.address ?? "");
+  const [phone, setPhone] = useState(initialClient?.phone ?? "");
+  const [bankName, setBankName] = useState(initialClient?.bankName ?? "");
+  const [bankAccount, setBankAccount] = useState(initialClient?.bankAccount ?? "");
+  const [bankSwift, setBankSwift] = useState(initialClient?.bankSwift ?? "");
 
   const handleSave = () => {
     if (!name.trim()) return;
-    const mult = parseFloat(multiplier) || 3.8;
-    const newClient = {
-      id: Date.now(),
-      name: name.trim(),
-      country: country.trim() || "🌍 Unknown",
-      cashDebt: 0,
-      wireDebt: 0,
-      prices: Object.fromEntries(ALL_PRODUCTS.map(p => [p.code, parseFloat((p.single * mult).toFixed(2))])),
-    };
-    onSave(newClient);
+    const extra = Object.fromEntries(
+      Object.entries({
+        address: address.trim() || undefined,
+        phone: phone.trim() || undefined,
+        bankName: bankName.trim() || undefined,
+        bankAccount: bankAccount.trim() || undefined,
+        bankSwift: bankSwift.trim() || undefined,
+      }).filter(([, v]) => v !== undefined)
+    );
+    if (isEdit) {
+      onSave({ ...initialClient, name: name.trim(), country: country.trim() || "🌍 Unknown", ...extra });
+    } else {
+      const mult = parseFloat(multiplier) || 3.8;
+      onSave({
+        id: Date.now(),
+        name: name.trim(),
+        country: country.trim() || "🌍 Unknown",
+        cashDebt: 0, wireDebt: 0,
+        prices: Object.fromEntries(ALL_PRODUCTS.map(p => [p.code, parseFloat((p.single * mult).toFixed(2))])),
+        ...extra,
+      });
+    }
     onClose();
   };
 
+  const fieldGroup = (label, val, setVal, placeholder, type = "text") => (
+    <div>
+      <label style={S.label}>{label}</label>
+      <input style={S.input} type={type} placeholder={placeholder} value={val} onChange={e => setVal(e.target.value)} />
+    </div>
+  );
+
   return (
     <div style={S.overlay} onClick={onClose}>
-      <div style={{ ...S.modal, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...S.modal, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{T.addClientTitle}</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{isEdit ? `✏️ ${T.editClient}: ${initialClient.name}` : T.addClientTitle}</div>
           <button style={S.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={S.modalBody}>
           <div style={S.col}>
-            <div>
-              <label style={S.label}>{T.clientNameLabel}</label>
-              <input style={S.input} placeholder="e.g. Ozodbek" value={name} onChange={e => setName(e.target.value)} />
-            </div>
+            {fieldGroup(T.clientNameLabel, name, setName, "e.g. Ozodbek")}
             <div>
               <label style={S.label}>{T.clientCountryLabel}</label>
-              <input style={S.input} placeholder="🇺🇿 Uzbekistan" value={country} onChange={e => setCountry(e.target.value)} />
+              <CountrySelect value={country} onChange={setCountry} />
             </div>
-            <div>
-              <label style={S.label}>{T.priceMultiplier}</label>
-              <input style={S.input} type="number" step="0.1" min="1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>× single weight (e.g. 3.8 → price = weight × 3.8)</div>
-            </div>
+            {!isEdit && (
+              <div>
+                <label style={S.label}>{T.priceMultiplier}</label>
+                <input style={S.input} type="number" step="0.1" min="1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>× single weight (e.g. 3.8 → price = weight × 3.8)</div>
+              </div>
+            )}
+
+            <div style={{ ...S.divider, margin: "4px 0" }} />
+            <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{T.optionalFields}</div>
+
+            {fieldGroup(T.clientAddress, address, setAddress, "Street, City, Country")}
+            {fieldGroup(T.clientPhone, phone, setPhone, "+998 90 000 0000", "tel")}
+            {fieldGroup(T.clientBank, bankName, setBankName, "Bank name")}
+            {fieldGroup(T.clientBankAccount, bankAccount, setBankAccount, "Account / IBAN")}
+            {fieldGroup(T.clientBankSwift, bankSwift, setBankSwift, "SWIFT / BIC")}
+
             <div style={{ display: "flex", gap: 8 }}>
               <button style={S.btnPrimary} onClick={handleSave}>{T.save}</button>
               <button style={S.btn(C.muted)} onClick={onClose}>{T.cancel}</button>
@@ -1278,6 +1417,8 @@ function Clients({ clients, setClients, orders }) {
   const [toast, setToast] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showAddClient, setShowAddClient] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
+  const [confirmDeleteClientId, setConfirmDeleteClientId] = useState(null);
 
   const startEdit = (c) => { setEditingId(c.id); setEditPrices({ ...c.prices }); setExpandedId(c.id); };
   const saveEdit = (id) => {
@@ -1288,6 +1429,17 @@ function Clients({ clients, setClients, orders }) {
 
   const handleAddClient = (newClient) => {
     setClients(prev => { const n = [...prev, newClient]; save("fos_clients", n); return n; });
+    setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
+  };
+
+  const handleEditClient = (updated) => {
+    setClients(prev => { const n = prev.map(c => c.id === updated.id ? updated : c); save("fos_clients", n); return n; });
+    setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
+  };
+
+  const handleDeleteClient = () => {
+    setClients(prev => { const n = prev.filter(c => c.id !== confirmDeleteClientId); save("fos_clients", n); return n; });
+    setConfirmDeleteClientId(null);
     setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
   };
 
@@ -1306,6 +1458,23 @@ function Clients({ clients, setClients, orders }) {
         <AddClientModal
           onClose={() => setShowAddClient(false)}
           onSave={handleAddClient}
+        />
+      )}
+      {editingClient && (
+        <AddClientModal
+          onClose={() => setEditingClient(null)}
+          onSave={handleEditClient}
+          initialClient={editingClient}
+        />
+      )}
+      {confirmDeleteClientId && (
+        <ConfirmModal
+          title={T.confirmDeleteClientTitle}
+          message={T.confirmDeleteClientMsg}
+          confirmLabel={T.confirmYes}
+          cancelLabel={T.confirmNo}
+          onConfirm={handleDeleteClient}
+          onCancel={() => setConfirmDeleteClientId(null)}
         />
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -1329,7 +1498,9 @@ function Clients({ clients, setClients, orders }) {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button style={S.btnSm(C.cyan)} onClick={e => { e.stopPropagation(); setSelectedClient(c); }}>ℹ️ {T.clientInfoTitle}</button>
-                {!isEditing && <button style={S.btnSm(C.accent)} onClick={e => { e.stopPropagation(); startEdit(c); }}>{T.editPrices}</button>}
+                <button style={S.btnSm(C.accent)} onClick={e => { e.stopPropagation(); setEditingClient(c); }}>✏️ {T.editClient}</button>
+                <button style={S.btnSm(C.red)} onClick={e => { e.stopPropagation(); setConfirmDeleteClientId(c.id); }}>🗑 {T.deleteClient}</button>
+                {!isEditing && <button style={S.btnSm(C.muted)} onClick={e => { e.stopPropagation(); startEdit(c); }}>{T.editPrices}</button>}
                 <span style={{ color: C.muted, fontSize: 16 }}>{isExpanded ? "▲" : "▼"}</span>
               </div>
             </div>
