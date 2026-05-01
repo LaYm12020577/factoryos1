@@ -76,6 +76,7 @@ const TRANSLATIONS = {
     clientBankAccount: "Hisob raqam", clientBankSwift: "SWIFT kod",
     optionalFields: "Qo'shimcha ma'lumotlar (ixtiyoriy)",
     recentlyUsed: "Yaqinda ishlatilgan", searchCountry: "Mamlakat qidirish...",
+    priceType: "Narx turi", orderBreakdown: "Buyurtmalar tafsiloti",
   },
   ru: {
     dashboard: "Главная", orders: "Заказы", debts: "Долги",
@@ -140,6 +141,7 @@ const TRANSLATIONS = {
     clientBankAccount: "Номер счёта", clientBankSwift: "SWIFT-код",
     optionalFields: "Дополнительная информация (необязательно)",
     recentlyUsed: "Недавно использованные", searchCountry: "Поиск страны...",
+    priceType: "Тип цены", orderBreakdown: "Детали заказов",
   },
   zh: {
     dashboard: "主页", orders: "订单", debts: "债务",
@@ -204,6 +206,7 @@ const TRANSLATIONS = {
     clientBankAccount: "账号", clientBankSwift: "SWIFT代码",
     optionalFields: "附加信息（可选）",
     recentlyUsed: "最近使用", searchCountry: "搜索国家...",
+    priceType: "价格类型", orderBreakdown: "订单明细",
   },
 };
 
@@ -665,11 +668,17 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
     }
     return clients[0]?.id ?? "";
   });
+  const [priceType, setPriceType] = useState("cash");
   const [items, setItems] = useState(() => {
     if (initialOrder) return initialOrder.items.map(i => ({ product: i.product, qty: String(i.qty) }));
     return [{ product: ALL_PRODUCTS[0].code, qty: "" }];
   });
   const client = clients.find(c => c.id === Number(clientId));
+
+  const getUnitPrice = (productCode) => {
+    const cashPrice = client?.prices[productCode] ?? 0;
+    return priceType === "wire" ? parseFloat((cashPrice * (1 + TAX_RATE)).toFixed(2)) : cashPrice;
+  };
 
   const addItem = () => setItems(prev => [...prev, { product: ALL_PRODUCTS[0].code, qty: "" }]);
   const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
@@ -677,8 +686,8 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
 
   const enrichedItems = items.map(item => ({
     ...item,
-    unitPrice: client?.prices[item.product] ?? 0,
-    subtotal: Math.round((parseFloat(item.qty) || 0) * (client?.prices[item.product] ?? 0)),
+    unitPrice: getUnitPrice(item.product),
+    subtotal: Math.round((parseFloat(item.qty) || 0) * getUnitPrice(item.product)),
   }));
   const total = enrichedItems.reduce((s, i) => s + i.subtotal, 0);
 
@@ -729,13 +738,25 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
             </div>
 
             <div>
+              <label style={S.label}>{T.priceType}</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[["cash", T.cash, C.green], ["wire", T.wire, C.cyan]].map(([k, label, col]) => (
+                  <button key={k} onClick={() => setPriceType(k)}
+                    style={{ ...S.btn(col), fontWeight: priceType === k ? 700 : 400, flex: 1, border: priceType === k ? `2px solid ${col}` : undefined }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <label style={{ ...S.label, marginBottom: 0 }}>{T.product}</label>
                 <button style={S.btnSm(C.accent)} onClick={addItem}>{T.addProduct}</button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {items.map((item, idx) => {
-                  const unitPrice = client?.prices[item.product] ?? 0;
+                  const unitPrice = getUnitPrice(item.product);
                   const subtotal = Math.round((parseFloat(item.qty) || 0) * unitPrice);
                   return (
                     <div key={idx} style={{ background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px" }}>
@@ -1066,6 +1087,7 @@ function Orders({ orders, setOrders, clients }) {
 function Debts({ clients, orders }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [filterClient, setFilterClient] = useState("all");
+  const [expandedClientId, setExpandedClientId] = useState(null);
   const clientDebts = computeClientDebts(orders);
   const shown = filterClient === "all" ? clients : clients.filter(c => c.name === filterClient);
   // Pre-compute rounded debt values per shown client to ensure totals match displayed amounts
@@ -1111,9 +1133,54 @@ function Debts({ clients, orders }) {
               <div style={S.infoBox(C.cyan)}><div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>{T.wireDebt}</div><div style={{ fontWeight: 700, color: C.cyan, fontSize: L ? 20 : 17 }}>${wireDebt.toLocaleString()}</div></div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button style={S.btn(C.accent)}>{T.viewOrders}</button>
+              <button style={{ ...S.btn(C.accent), fontWeight: expandedClientId === c.id ? 700 : 500 }}
+                onClick={() => setExpandedClientId(expandedClientId === c.id ? null : c.id)}>
+                {expandedClientId === c.id ? "▲" : "▼"} {T.viewOrders}
+              </button>
               <button style={S.btn(C.muted)}>{T.exportBtn}</button>
             </div>
+            {expandedClientId === c.id && (() => {
+              const clientOrders = orders.filter(o => o.client === c.name && (o.total - o.cashPaid - o.wirePaid) > 0);
+              if (clientOrders.length === 0) return (
+                <div style={{ marginTop: 12, color: C.muted, fontSize: 13, textAlign: "center", padding: "10px 0" }}>{T.noOrders}</div>
+              );
+              return (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ height: 1, background: C.border, marginBottom: 10 }} />
+                  <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 8 }}>{T.orderBreakdown}</div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ ...S.table, fontSize: 12 }}>
+                      <thead><tr>
+                        <th style={{ ...S.th, fontSize: 10 }}>{T.orderId}</th>
+                        <th style={{ ...S.th, fontSize: 10 }}>{T.date ?? "Date"}</th>
+                        <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.total}</th>
+                        <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.cashPaid}</th>
+                        <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.wirePaid}</th>
+                        <th style={{ ...S.th, fontSize: 10, textAlign: "right" }}>{T.remaining}</th>
+                        <th style={{ ...S.th, fontSize: 10 }}>{T.status}</th>
+                      </tr></thead>
+                      <tbody>
+                        {clientOrders.map(o => {
+                          const rem = o.total - o.cashPaid - o.wirePaid;
+                          const sc = o.status === "paid" ? C.green : o.status === "partial" ? C.yellow : C.red;
+                          return (
+                            <tr key={o.id}>
+                              <td style={{ ...S.td, padding: "6px 10px", color: C.accent, fontWeight: 700 }}>{o.id}</td>
+                              <td style={{ ...S.td, padding: "6px 10px", color: C.muted }}>{o.date}</td>
+                              <td style={{ ...S.td, padding: "6px 10px", textAlign: "right", fontWeight: 700 }}>${o.total.toLocaleString()}</td>
+                              <td style={{ ...S.td, padding: "6px 10px", textAlign: "right", color: C.green }}>${o.cashPaid.toLocaleString()}</td>
+                              <td style={{ ...S.td, padding: "6px 10px", textAlign: "right", color: C.cyan }}>${o.wirePaid.toLocaleString()}</td>
+                              <td style={{ ...S.td, padding: "6px 10px", textAlign: "right", color: C.red, fontWeight: 700 }}>${rem.toLocaleString()}</td>
+                              <td style={{ ...S.td, padding: "6px 10px" }}><span style={S.badge(sc)}>{T[o.status] || o.status}</span></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })}
@@ -1208,7 +1275,7 @@ function Shipments({ shipments, setShipments }) {
 }
 
 // ─── CLIENT INFO MODAL ───────────────────────────────────────
-function ClientInfoModal({ client, orders, onClose }) {
+function ClientInfoModal({ client, orders, onClose, onEdit, onDelete }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const clientOrders = orders.filter(o => o.client === client.name);
   const totalAmount = clientOrders.reduce((s, o) => s + o.total, 0);
@@ -1259,7 +1326,11 @@ function ClientInfoModal({ client, orders, onClose }) {
             <div style={{ fontWeight: 700, fontSize: 18 }}>{client.name}</div>
             <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{client.country}</div>
           </div>
-          <button style={S.closeBtn} onClick={onClose}>×</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {onEdit && <button style={S.btnSm(C.accent)} onClick={() => { onClose(); onEdit(client); }}>✏️ {T.editClient}</button>}
+            {onDelete && <button style={S.btnSm(C.red)} onClick={() => { onClose(); onDelete(client.id); }}>🗑 {T.deleteClient}</button>}
+            <button style={S.closeBtn} onClick={onClose}>×</button>
+          </div>
         </div>
         <div style={S.modalBody}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
@@ -1276,6 +1347,19 @@ function ClientInfoModal({ client, orders, onClose }) {
               <div style={{ fontWeight: 700, fontSize: 16, color: C.red }}>${totalDebt.toLocaleString()}</div>
             </div>
           </div>
+
+          {(client.address || client.phone || client.bankName || client.bankAccount || client.bankSwift) && (
+            <div style={{ ...S.infoBox(C.muted), marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 8 }}>{T.optionalFields}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {client.address && <div style={{ fontSize: 13 }}>📍 <span style={{ color: C.muted, marginRight: 4 }}>{T.clientAddress}:</span>{client.address}</div>}
+                {client.phone && <div style={{ fontSize: 13 }}>📞 <span style={{ color: C.muted, marginRight: 4 }}>{T.clientPhone}:</span>{client.phone}</div>}
+                {client.bankName && <div style={{ fontSize: 13 }}>🏦 <span style={{ color: C.muted, marginRight: 4 }}>{T.clientBank}:</span>{client.bankName}</div>}
+                {client.bankAccount && <div style={{ fontSize: 13 }}>💳 <span style={{ color: C.muted, marginRight: 4 }}>{T.clientBankAccount}:</span>{client.bankAccount}</div>}
+                {client.bankSwift && <div style={{ fontSize: 13 }}>🔑 <span style={{ color: C.muted, marginRight: 4 }}>{T.clientBankSwift}:</span>{client.bankSwift}</div>}
+              </div>
+            </div>
+          )}
           {clientOrders.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 8 }}>{T.recentOrders}</div>
@@ -1452,6 +1536,8 @@ function Clients({ clients, setClients, orders }) {
           client={selectedClient}
           orders={orders}
           onClose={() => setSelectedClient(null)}
+          onEdit={(c) => { setSelectedClient(null); setEditingClient(c); }}
+          onDelete={(id) => { setSelectedClient(null); setConfirmDeleteClientId(id); }}
         />
       )}
       {showAddClient && (
@@ -1498,8 +1584,6 @@ function Clients({ clients, setClients, orders }) {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button style={S.btnSm(C.cyan)} onClick={e => { e.stopPropagation(); setSelectedClient(c); }}>ℹ️ {T.clientInfoTitle}</button>
-                <button style={S.btnSm(C.accent)} onClick={e => { e.stopPropagation(); setEditingClient(c); }}>✏️ {T.editClient}</button>
-                <button style={S.btnSm(C.red)} onClick={e => { e.stopPropagation(); setConfirmDeleteClientId(c.id); }}>🗑 {T.deleteClient}</button>
                 {!isEditing && <button style={S.btnSm(C.muted)} onClick={e => { e.stopPropagation(); startEdit(c); }}>{T.editPrices}</button>}
                 <span style={{ color: C.muted, fontSize: 16 }}>{isExpanded ? "▲" : "▼"}</span>
               </div>
