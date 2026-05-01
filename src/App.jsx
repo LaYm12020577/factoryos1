@@ -1323,10 +1323,7 @@ function AddClientModal({ onClose, onSave, initialClient }) {
   const isEdit = !!initialClient;
   const [name, setName] = useState(initialClient?.name ?? "");
   const [country, setCountry] = useState(initialClient?.country ?? "");
-  const [multiplier, setMultiplier] = useState(() => {
-    if (initialClient) return "3.8"; // multiplier not stored, keep default
-    return "3.8";
-  });
+  const [multiplier, setMultiplier] = useState("3.8");
   const [address, setAddress] = useState(initialClient?.address ?? "");
   const [phone, setPhone] = useState(initialClient?.phone ?? "");
   const [bankName, setBankName] = useState(initialClient?.bankName ?? "");
@@ -1335,15 +1332,15 @@ function AddClientModal({ onClose, onSave, initialClient }) {
 
   const handleSave = () => {
     if (!name.trim()) return;
-    const extra = {
-      address: address.trim() || undefined,
-      phone: phone.trim() || undefined,
-      bankName: bankName.trim() || undefined,
-      bankAccount: bankAccount.trim() || undefined,
-      bankSwift: bankSwift.trim() || undefined,
-    };
-    // Remove undefined keys
-    Object.keys(extra).forEach(k => extra[k] === undefined && delete extra[k]);
+    const extra = Object.fromEntries(
+      Object.entries({
+        address: address.trim() || undefined,
+        phone: phone.trim() || undefined,
+        bankName: bankName.trim() || undefined,
+        bankAccount: bankAccount.trim() || undefined,
+        bankSwift: bankSwift.trim() || undefined,
+      }).filter(([, v]) => v !== undefined)
+    );
     if (isEdit) {
       onSave({ ...initialClient, name: name.trim(), country: country.trim() || "🌍 Unknown", ...extra });
     } else {
