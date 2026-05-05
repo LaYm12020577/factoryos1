@@ -662,7 +662,7 @@ function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients,
 
   const generateNakladnoy = () => {
     const rows = order.items.map((it, i) => {
-      const pd = getProductData(it.code || it.product);
+      const pd = getProductData(it.product);
       const unitW = pd?.single ?? "—";
       const totalW = pd?.single ? (pd.single * it.qty).toFixed(2) : "—";
       return `<tr>
