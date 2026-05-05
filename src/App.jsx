@@ -77,6 +77,13 @@ const TRANSLATIONS = {
     optionalFields: "Qo'shimcha ma'lumotlar (ixtiyoriy)",
     recentlyUsed: "Yaqinda ishlatilgan", searchCountry: "Mamlakat qidirish...",
     priceType: "Narx turi", orderBreakdown: "Buyurtmalar tafsiloti",
+    productType: "Tur", weightKg: "Og'irlik (kg)",
+    confirmDeleteProductTitle: "Mahsulotni o'chirish", confirmDeleteProductMsg: "Bu mahsulotni o'chirishni xohlaysizmi?",
+    unlockPrice: "🔓 Narxni o'zgartirish", confirmPriceChange: "Ushbu band narxini o'zgartirmoqchimisiz?",
+    changePriceYes: "Ha, o'zgartirish", changePriceNo: "Yo'q",
+    shipper: "Yetkazib beruvchi", consignee: "Qabul qiluvchi",
+    totalWeight: "Jami og'irlik", unitWeight: "Birlik og'irligi",
+    editProductTitle: "Mahsulotni tahrirlash",
   },
   ru: {
     dashboard: "Главная", orders: "Заказы", debts: "Долги",
@@ -142,6 +149,13 @@ const TRANSLATIONS = {
     optionalFields: "Дополнительная информация (необязательно)",
     recentlyUsed: "Недавно использованные", searchCountry: "Поиск страны...",
     priceType: "Тип цены", orderBreakdown: "Детали заказов",
+    productType: "Тип", weightKg: "Вес (кг)",
+    confirmDeleteProductTitle: "Удалить продукт", confirmDeleteProductMsg: "Вы действительно хотите удалить этот продукт?",
+    unlockPrice: "🔓 Изменить цену", confirmPriceChange: "Изменить цену для этой позиции?",
+    changePriceYes: "Да, изменить", changePriceNo: "Нет",
+    shipper: "Грузоотправитель", consignee: "Грузополучатель",
+    totalWeight: "Общий вес", unitWeight: "Вес за ед.",
+    editProductTitle: "Редактировать продукт",
   },
   zh: {
     dashboard: "主页", orders: "订单", debts: "债务",
@@ -207,6 +221,13 @@ const TRANSLATIONS = {
     optionalFields: "附加信息（可选）",
     recentlyUsed: "最近使用", searchCountry: "搜索国家...",
     priceType: "价格类型", orderBreakdown: "订单明细",
+    productType: "类型", weightKg: "重量(kg)",
+    confirmDeleteProductTitle: "删除产品", confirmDeleteProductMsg: "确定要删除此产品吗？",
+    unlockPrice: "🔓 修改价格", confirmPriceChange: "修改此项单价？",
+    changePriceYes: "是，修改", changePriceNo: "否",
+    shipper: "发货方", consignee: "收货方",
+    totalWeight: "总重量", unitWeight: "单件重量",
+    editProductTitle: "编辑产品",
   },
 };
 
@@ -475,10 +496,12 @@ function CountrySelect({ value, onChange }) {
 }
 
 // ─── PRICELIST MODAL ─────────────────────────────────────────
-function PricelistModal({ clients, onClose }) {
+function PricelistModal({ clients, products, onClose }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [selClient, setSelClient] = useState(clients[0]?.id ?? null);
   const client = clients.find(c => c.id === Number(selClient));
+  const alumProds = products.filter(p => p.type === "alum");
+  const bimetalProds = products.filter(p => p.type === "bimetal");
   return (
     <div style={S.overlay} onClick={onClose}>
       <div style={{ ...S.modal, maxWidth: 700 }} onClick={e => e.stopPropagation()}>
@@ -496,7 +519,7 @@ function PricelistModal({ clients, onClose }) {
           <div style={{ fontSize: 12, color: C.yellow, background: `${C.yellow}15`, border: `1px solid ${C.yellow}40`, borderRadius: 8, padding: "8px 12px", marginBottom: 14 }}>⚠️ {T.taxNote}</div>
           {client && (<>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>{T.previewTitle}: <span style={{ color: C.accent }}>{client.name}</span></div>
-            {[["alum", PRODUCTS_ALUM, T.aluminum, C.yellow], ["bimetal", PRODUCTS_BIMETAL, T.bimetal, C.cyan]].map(([key, prods, label, col]) => (
+            {[["alum", alumProds, T.aluminum, C.yellow], ["bimetal", bimetalProds, T.bimetal, C.cyan]].map(([key, prods, label, col]) => (
               <div key={key}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: col, marginBottom: 6, marginTop: 8 }}>— {label} ({prods.length})</div>
                 <div style={{ overflowX: "auto", marginBottom: 10 }}>
@@ -534,7 +557,7 @@ function PricelistModal({ clients, onClose }) {
 }
 
 // ─── ORDER MODAL ─────────────────────────────────────────────
-function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients }) {
+function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients, products }) {
   const C = useC(); const T = useT();
   const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [showPay, setShowPay] = useState(false);
@@ -546,6 +569,10 @@ function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients 
   const wirePct = Math.round(order.wirePaid / order.total * 100);
   const sc = order.status === "paid" ? C.green : order.status === "partial" ? C.yellow : C.red;
   const remaining = order.total - order.cashPaid - order.wirePaid;
+  const client = clients.find(c => c.name === order.client) ?? { name: order.client, country: "", address: "", phone: "", bankName: "", bankAccount: "", bankSwift: "" };
+  const today = new Date().toLocaleDateString("en-GB");
+
+  const getProductData = (code) => (products || []).find(p => p.code === code);
 
   const handlePaySave = () => {
     const amt = parseFloat(payAmount);
@@ -553,6 +580,203 @@ function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients 
     onPaymentSaved(order.id, payType, amt);
     setShowPay(false);
     setPayAmount("");
+  };
+
+  const generateInvoice = () => {
+    const rows = order.items.map((it, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td style="font-weight:700">${it.product}</td>
+        <td style="text-align:right">${it.qty}</td>
+        <td style="text-align:right">$${it.unitPrice}</td>
+        <td style="text-align:right;font-weight:700">$${(it.qty * it.unitPrice).toFixed(2)}</td>
+      </tr>`).join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Invoice – ${order.id}</title>
+    <style>
+      body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#111}
+      h1{font-size:26px;margin:0}h2{font-size:14px;margin-top:24px;border-bottom:1px solid #ccc;padding-bottom:4px;color:#555}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px}
+      .meta{font-size:13px;color:#555;margin-top:4px}
+      .parties{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-bottom:20px}
+      .party{background:#f8faff;border:1px solid #dce3f0;border-radius:8px;padding:14px}
+      .party-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+      .party-name{font-weight:700;font-size:15px}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+      th{background:#f0f4fb;padding:9px 10px;text-align:left;border:1px solid #dce3f0;font-size:11px;text-transform:uppercase}
+      td{padding:9px 10px;border:1px solid #dce3f0}
+      .totals{margin-top:20px;display:flex;justify-content:flex-end}
+      .totals-box{min-width:260px}
+      .total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:14px;border-bottom:1px solid #eee}
+      .total-final{display:flex;justify-content:space-between;padding:8px 0;font-size:16px;font-weight:700;color:#d63c3c;border-top:2px solid #000;margin-top:4px}
+      .footer{margin-top:40px;font-size:12px;color:#888;text-align:center}
+    </style></head><body>
+    <div class="header">
+      <div>
+        <h1>INVOICE</h1>
+        <div class="meta">No. <strong>${order.id}</strong> &nbsp;|&nbsp; Date: <strong>${order.date}</strong></div>
+      </div>
+      <div style="text-align:right;font-size:13px;color:#555">
+        <div style="font-weight:700;font-size:15px">FactoryOS Industrial Co.</div>
+        <div>radiator manufacturer</div>
+      </div>
+    </div>
+    <div class="parties">
+      <div class="party">
+        <div class="party-label">Seller</div>
+        <div class="party-name">FactoryOS Industrial Co.</div>
+        <div style="font-size:13px;color:#555;margin-top:4px">Radiator manufacturer</div>
+      </div>
+      <div class="party">
+        <div class="party-label">Buyer</div>
+        <div class="party-name">${client.name}</div>
+        <div style="font-size:13px;color:#555;margin-top:4px">
+          ${client.country}${client.address ? "<br/>" + client.address : ""}
+          ${client.phone ? "<br/>Tel: " + client.phone : ""}
+        </div>
+      </div>
+    </div>
+    <h2>Items</h2>
+    <table>
+      <thead><tr><th>№</th><th>Product Code</th><th style="text-align:right">Qty (pcs)</th><th style="text-align:right">Unit Price ($)</th><th style="text-align:right">Amount ($)</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="totals">
+      <div class="totals-box">
+        <div class="total-row"><span>Subtotal:</span><span>$${order.total.toFixed(2)}</span></div>
+        <div class="total-row"><span>💵 Cash Paid:</span><span style="color:#1a9e5c">$${order.cashPaid.toFixed(2)}</span></div>
+        <div class="total-row"><span>🏦 Wire Paid:</span><span style="color:#0a8fa8">$${order.wirePaid.toFixed(2)}</span></div>
+        <div class="total-final"><span>Balance Due:</span><span>$${remaining.toFixed(2)}</span></div>
+      </div>
+    </div>
+    ${client.bankName ? `<h2>Bank Details</h2>
+    <div style="font-size:13px;line-height:1.8">
+      ${client.bankName ? "Bank: <strong>" + client.bankName + "</strong><br/>" : ""}
+      ${client.bankAccount ? "Account: <strong>" + client.bankAccount + "</strong><br/>" : ""}
+      ${client.bankSwift ? "SWIFT: <strong>" + client.bankSwift + "</strong>" : ""}
+    </div>` : ""}
+    <div class="footer">Generated by FactoryOS &nbsp;|&nbsp; ${today}</div>
+    </body></html>`;
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); win.print(); }
+  };
+
+  const generateNakladnoy = () => {
+    const rows = order.items.map((it, i) => {
+      const pd = getProductData(it.code || it.product);
+      const unitW = pd?.single ?? "—";
+      const totalW = pd?.single ? (pd.single * it.qty).toFixed(2) : "—";
+      return `<tr>
+        <td>${i + 1}</td>
+        <td style="font-weight:700">${it.product}</td>
+        <td style="text-align:right">${it.qty}</td>
+        <td style="text-align:right">${unitW}</td>
+        <td style="text-align:right">${totalW}</td>
+        <td style="text-align:right">$${it.unitPrice}</td>
+        <td style="text-align:right;font-weight:700">$${(it.qty * it.unitPrice).toFixed(2)}</td>
+      </tr>`;
+    }).join("");
+    const totalQty = order.items.reduce((s, i) => s + i.qty, 0);
+    const totalWt = order.items.reduce((s, it) => {
+      const pd = getProductData(it.product);
+      return s + (pd?.single ? pd.single * it.qty : 0);
+    }, 0);
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Delivery Note – ${order.id}</title>
+    <style>
+      body{font-family:Arial,sans-serif;max-width:860px;margin:40px auto;padding:20px;color:#111}
+      h1{font-size:20px;text-align:center;margin-bottom:4px}
+      .sub{text-align:center;font-size:13px;color:#555;margin-bottom:20px}
+      .parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;font-size:13px}
+      .party-label{font-weight:700;color:#555;margin-bottom:4px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th{background:#f0f4fb;padding:8px 10px;text-align:left;border:1px solid #dce3f0;font-size:11px;text-transform:uppercase}
+      td{padding:8px 10px;border:1px solid #dce3f0}
+      .summary{margin-top:16px;display:flex;gap:24px;font-size:13px}
+      .sum-box{background:#f8faff;border:1px solid #dce3f0;border-radius:6px;padding:10px 16px;min-width:160px}
+      .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
+      .sig-box{border-top:1px solid #000;padding-top:6px;font-size:12px}
+    </style></head><body>
+    <h1>DELIVERY NOTE / ТОВАРНАЯ НАКЛАДНАЯ</h1>
+    <div class="sub">No. ${order.id} &nbsp;|&nbsp; Date: ${order.date}</div>
+    <div class="parties">
+      <div>
+        <div class="party-label">Shipper (Грузоотправитель)</div>
+        <div>FactoryOS Industrial Co.</div>
+      </div>
+      <div>
+        <div class="party-label">Consignee (Грузополучатель)</div>
+        <div><strong>${client.name}</strong></div>
+        <div>${client.country}${client.address ? ", " + client.address : ""}</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>№</th><th>Product Code</th>
+        <th style="text-align:right">Qty (pcs)</th>
+        <th style="text-align:right">Unit Wt (kg)</th>
+        <th style="text-align:right">Total Wt (kg)</th>
+        <th style="text-align:right">Unit Price ($)</th>
+        <th style="text-align:right">Amount ($)</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="summary">
+      <div class="sum-box"><div style="font-size:11px;color:#888;margin-bottom:4px">TOTAL QTY</div><div style="font-weight:700;font-size:16px">${totalQty} pcs</div></div>
+      <div class="sum-box"><div style="font-size:11px;color:#888;margin-bottom:4px">TOTAL WEIGHT</div><div style="font-weight:700;font-size:16px">${totalWt.toFixed(2)} kg</div></div>
+      <div class="sum-box"><div style="font-size:11px;color:#888;margin-bottom:4px">TOTAL AMOUNT</div><div style="font-weight:700;font-size:16px">$${order.total.toFixed(2)}</div></div>
+    </div>
+    <div class="sig">
+      <div class="sig-box"><strong>Shipper:</strong> FactoryOS<br/><br/>Signature: _______________<br/>Date: ${today}</div>
+      <div class="sig-box"><strong>Consignee:</strong> ${client.name}<br/><br/>Signature: _______________<br/>Date: _______________</div>
+    </div>
+    </body></html>`;
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); win.print(); }
+  };
+
+  const generatePricelist = () => {
+    if (!client || !client.prices) return;
+    const allProds = products || [];
+    const alumProds = allProds.filter(p => p.type === "alum");
+    const bimetalProds = allProds.filter(p => p.type === "bimetal");
+    const buildRows = (prods) => prods.map((p, i) => {
+      const cash = client.prices[p.code] ?? "—";
+      const wire = typeof cash === "number" ? (cash * (1 + TAX_RATE)).toFixed(2) : "—";
+      return `<tr>
+        <td>${i + 1}</td>
+        <td style="font-weight:700">${p.code}</td>
+        <td style="text-align:right">${p.raw}</td>
+        <td style="text-align:right">${p.single}</td>
+        <td style="text-align:right;color:#1a9e5c;font-weight:700">$${cash}</td>
+        <td style="text-align:right;color:#0a8fa8;font-weight:700">$${wire}</td>
+        <td style="text-align:right;color:#888">${p.spec || "—"}</td>
+        <td style="text-align:right">${p.heat ? p.heat + "W" : "—"}</td>
+      </tr>`;
+    }).join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Pricelist – ${client.name}</title>
+    <style>
+      body{font-family:Arial,sans-serif;max-width:860px;margin:40px auto;padding:20px;color:#111}
+      h1{font-size:22px;margin-bottom:4px}
+      .meta{font-size:13px;color:#555;margin-bottom:24px}
+      .note{background:#fffbe6;border:1px solid #f5a623;border-radius:6px;padding:8px 14px;font-size:12px;color:#7a5500;margin-bottom:20px}
+      h2{font-size:14px;margin-top:24px;border-bottom:1px solid #ccc;padding-bottom:4px;color:#444}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+      th{background:#f0f4fb;padding:8px 10px;text-align:left;border:1px solid #dce3f0;font-size:11px;text-transform:uppercase}
+      td{padding:8px 10px;border:1px solid #dce3f0}
+      .footer{margin-top:32px;font-size:12px;color:#888;text-align:center}
+    </style></head><body>
+    <h1>PRICE LIST</h1>
+    <div class="meta">Client: <strong>${client.name}</strong> &nbsp;|&nbsp; ${client.country} &nbsp;|&nbsp; Date: ${today}</div>
+    <div class="note">⚠️ Wire price = Cash price + 10% tax. Prices in USD per section.</div>
+    ${alumProds.length > 0 ? `<h2>Aluminum Radiators (${alumProds.length} models)</h2>
+    <table><thead><tr><th>№</th><th>Model</th><th style="text-align:right">Raw Wt</th><th style="text-align:right">Single Wt</th><th style="text-align:right">Cash Price ($)</th><th style="text-align:right">Wire Price ($)</th><th style="text-align:right">Spec mm</th><th style="text-align:right">Heat W</th></tr></thead>
+    <tbody>${buildRows(alumProds)}</tbody></table>` : ""}
+    ${bimetalProds.length > 0 ? `<h2>Bimetal Radiators (${bimetalProds.length} models)</h2>
+    <table><thead><tr><th>№</th><th>Model</th><th style="text-align:right">Raw Wt</th><th style="text-align:right">Single Wt</th><th style="text-align:right">Cash Price ($)</th><th style="text-align:right">Wire Price ($)</th><th style="text-align:right">Spec mm</th><th style="text-align:right">Heat W</th></tr></thead>
+    <tbody>${buildRows(bimetalProds)}</tbody></table>` : ""}
+    <div class="footer">Generated by FactoryOS &nbsp;|&nbsp; ${today}</div>
+    </body></html>`;
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); win.print(); }
   };
 
   return (
@@ -622,9 +846,15 @@ function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients 
                 <div>
                   <label style={S.label}>{T.paymentType}</label>
                   <div style={{ display: "flex", gap: 8 }}>
-                    {[["cash", T.cash], ["wire", T.wire]].map(([k, label]) => (
-                      <button key={k} onClick={() => setPayType(k)}
-                        style={{ ...S.btn(k === "cash" ? C.green : C.cyan), fontWeight: payType === k ? 700 : 400, flex: 1 }}>{label}</button>
+                    {[["cash", T.cash, C.green], ["wire", T.wire, C.cyan]].map(([k, label, col]) => (
+                      <button key={k} onClick={() => setPayType(k)} style={{
+                        flex: 1, cursor: "pointer", borderRadius: L ? 10 : 8,
+                        padding: L ? "10px 18px" : "9px 14px", fontSize: L ? 14 : 13,
+                        fontWeight: payType === k ? 700 : 500,
+                        background: payType === k ? col : `${col}15`,
+                        color: payType === k ? "#fff" : col,
+                        border: `2px solid ${col}`, transition: "all 0.15s",
+                      }}>{label}</button>
                     ))}
                   </div>
                 </div>
@@ -646,9 +876,9 @@ function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients 
 
           <div style={S.divider} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button style={S.btnPrimary}>📄 {T.generateInvoice}</button>
-            <button style={S.btn(C.cyan)}>📋 {T.generateNakladnaya}</button>
-            <button style={S.btn(C.yellow)}>📊 {T.generatePL}</button>
+            <button style={S.btnPrimary} onClick={generateInvoice}>📄 {T.generateInvoice}</button>
+            <button style={S.btn(C.cyan)} onClick={generateNakladnoy}>📋 {T.generateNakladnaya}</button>
+            <button style={S.btn(C.yellow)} onClick={generatePricelist}>📊 {T.generatePL}</button>
             <button style={S.btn(C.green)} onClick={() => setShowPay(true)}>💳 {T.addPayment}</button>
           </div>
         </div>
@@ -658,9 +888,13 @@ function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients 
 }
 
 // ─── NEW / EDIT ORDER MODAL ───────────────────────────────────
-function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
+function NewOrderModal({ clients, orders, onClose, onSave, initialOrder, products }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const isEdit = !!initialOrder;
+  const allProducts = products || [];
+  const alumProds = allProducts.filter(p => p.type === "alum");
+  const bimetalProds = allProducts.filter(p => p.type === "bimetal");
+
   const [clientId, setClientId] = useState(() => {
     if (initialOrder) {
       const c = clients.find(c => c.name === initialOrder.client);
@@ -670,25 +904,35 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
   });
   const [priceType, setPriceType] = useState("cash");
   const [items, setItems] = useState(() => {
-    if (initialOrder) return initialOrder.items.map(i => ({ product: i.product, qty: String(i.qty) }));
-    return [{ product: ALL_PRODUCTS[0].code, qty: "" }];
+    if (initialOrder) return initialOrder.items.map(i => ({
+      product: i.product, qty: String(i.qty),
+      customPrice: String(i.unitPrice), priceUnlocked: true,
+    }));
+    return [{ product: allProducts[0]?.code ?? "", qty: "", customPrice: null, priceUnlocked: false }];
   });
+  const [confirmPriceIdx, setConfirmPriceIdx] = useState(null);
   const client = clients.find(c => c.id === Number(clientId));
 
-  const getUnitPrice = (productCode) => {
-    const cashPrice = client?.prices[productCode] ?? 0;
+  const getUnitPrice = (item) => {
+    if (item.priceUnlocked && item.customPrice !== null && item.customPrice !== "") {
+      return parseFloat(item.customPrice) || 0;
+    }
+    const cashPrice = client?.prices[item.product] ?? 0;
     return priceType === "wire" ? parseFloat((cashPrice * (1 + TAX_RATE)).toFixed(2)) : cashPrice;
   };
 
-  const addItem = () => setItems(prev => [...prev, { product: ALL_PRODUCTS[0].code, qty: "" }]);
+  const addItem = () => setItems(prev => [...prev, { product: allProducts[0]?.code ?? "", qty: "", customPrice: null, priceUnlocked: false }]);
   const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
   const updateItem = (idx, field, val) => setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: val } : item));
+  const unlockPrice = (idx, currentPrice) => {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...item, priceUnlocked: true, customPrice: String(currentPrice) } : item));
+    setConfirmPriceIdx(null);
+  };
 
-  const enrichedItems = items.map(item => ({
-    ...item,
-    unitPrice: getUnitPrice(item.product),
-    subtotal: Math.round((parseFloat(item.qty) || 0) * getUnitPrice(item.product)),
-  }));
+  const enrichedItems = items.map(item => {
+    const up = getUnitPrice(item);
+    return { ...item, unitPrice: up, subtotal: (parseFloat(item.qty) || 0) * up };
+  });
   const total = enrichedItems.reduce((s, i) => s + i.subtotal, 0);
 
   const handleSave = () => {
@@ -741,8 +985,14 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
               <label style={S.label}>{T.priceType}</label>
               <div style={{ display: "flex", gap: 8 }}>
                 {[["cash", T.cash, C.green], ["wire", T.wire, C.cyan]].map(([k, label, col]) => (
-                  <button key={k} onClick={() => setPriceType(k)}
-                    style={{ ...S.btn(col), fontWeight: priceType === k ? 700 : 400, flex: 1, border: priceType === k ? `2px solid ${col}` : undefined }}>
+                  <button key={k} onClick={() => setPriceType(k)} style={{
+                    flex: 1, cursor: "pointer", borderRadius: L ? 10 : 8,
+                    padding: L ? "11px 18px" : "9px 14px", fontSize: L ? 14 : 13,
+                    fontWeight: priceType === k ? 700 : 500,
+                    background: priceType === k ? col : `${col}15`,
+                    color: priceType === k ? "#fff" : col,
+                    border: `2px solid ${col}`, transition: "all 0.15s",
+                  }}>
                     {label}
                   </button>
                 ))}
@@ -756,8 +1006,8 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {items.map((item, idx) => {
-                  const unitPrice = getUnitPrice(item.product);
-                  const subtotal = Math.round((parseFloat(item.qty) || 0) * unitPrice);
+                  const unitPrice = getUnitPrice(item);
+                  const subtotal = (parseFloat(item.qty) || 0) * unitPrice;
                   return (
                     <div key={idx} style={{ background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -770,8 +1020,8 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
                         <div>
                           <label style={S.label}>{T.selectProduct}</label>
                           <select style={S.select} value={item.product} onChange={e => updateItem(idx, "product", e.target.value)}>
-                            <optgroup label={T.aluminum}>{PRODUCTS_ALUM.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>
-                            <optgroup label={T.bimetal}>{PRODUCTS_BIMETAL.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>
+                            {alumProds.length > 0 && <optgroup label={T.aluminum}>{alumProds.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>}
+                            {bimetalProds.length > 0 && <optgroup label={T.bimetal}>{bimetalProds.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}</optgroup>}
                           </select>
                         </div>
                         <div style={{ minWidth: 80 }}>
@@ -780,14 +1030,39 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
                         </div>
                       </div>
                       {item.qty && (
-                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                          <div style={{ ...S.infoBox(C.muted), flex: 1, padding: "6px 10px" }}>
-                            <div style={{ fontSize: 10, color: C.muted }}>{T.unitPrice}</div>
-                            <div style={{ fontWeight: 700, fontSize: 13 }}>${unitPrice}</div>
-                          </div>
-                          <div style={{ ...S.infoBox(C.accent), flex: 1, padding: "6px 10px" }}>
-                            <div style={{ fontSize: 10, color: C.muted }}>{T.total}</div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: C.accent }}>${subtotal.toLocaleString()}</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                          {confirmPriceIdx === idx && (
+                            <div style={{ background: `${C.yellow}15`, border: `1px solid ${C.yellow}50`, borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 12, color: C.yellow, fontWeight: 600, flex: 1 }}>⚠️ {T.confirmPriceChange}</span>
+                              <button style={S.btnSm(C.yellow)} onClick={() => unlockPrice(idx, unitPrice)}>{T.changePriceYes}</button>
+                              <button style={S.btnSm(C.muted)} onClick={() => setConfirmPriceIdx(null)}>{T.changePriceNo}</button>
+                            </div>
+                          )}
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <div style={{ ...S.infoBox(C.muted), flex: 1, padding: "6px 10px" }}>
+                              <div style={{ fontSize: 10, color: C.muted, marginBottom: 3 }}>{T.unitPrice}</div>
+                              {item.priceUnlocked ? (
+                                <input
+                                  style={{ ...S.input, padding: "4px 8px", fontSize: 13, fontWeight: 700 }}
+                                  type="number" step="0.01" min="0"
+                                  value={item.customPrice ?? ""}
+                                  onChange={e => updateItem(idx, "customPrice", e.target.value)}
+                                />
+                              ) : (
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <span style={{ fontWeight: 700, fontSize: 13 }}>${unitPrice.toFixed(2)}</span>
+                                  <button
+                                    onClick={() => setConfirmPriceIdx(confirmPriceIdx === idx ? null : idx)}
+                                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.muted, padding: "0 2px", lineHeight: 1 }}
+                                    title={T.unlockPrice}
+                                  >🔒</button>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ ...S.infoBox(C.accent), flex: 1, padding: "6px 10px" }}>
+                              <div style={{ fontSize: 10, color: C.muted }}>{T.total}</div>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: C.accent }}>${subtotal.toFixed(2)}</div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -800,7 +1075,7 @@ function NewOrderModal({ clients, orders, onClose, onSave, initialOrder }) {
             {total > 0 && (
               <div style={{ ...S.infoBox(C.accent), display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 600 }}>{T.total}</span>
-                <span style={{ fontWeight: 700, fontSize: 20, color: C.accent }}>${total.toLocaleString()}</span>
+                <span style={{ fontWeight: 700, fontSize: 20, color: C.accent }}>${total.toFixed(2)}</span>
               </div>
             )}
 
@@ -888,7 +1163,7 @@ function Dashboard({ orders, clients, shipments }) {
 }
 
 // ─── ORDERS ──────────────────────────────────────────────────
-function Orders({ orders, setOrders, clients }) {
+function Orders({ orders, setOrders, clients, products }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterClient, setFilterClient] = useState("all");
@@ -969,6 +1244,7 @@ function Orders({ orders, setOrders, clients }) {
           onEdit={(o) => { setEditingOrder(o); setSelected(null); }}
           onDelete={(id) => setConfirmDeleteId(id)}
           clients={clients}
+          products={products}
         />
       )}
       {confirmDeleteId && (
@@ -981,7 +1257,7 @@ function Orders({ orders, setOrders, clients }) {
           onCancel={() => setConfirmDeleteId(null)}
         />
       )}
-      {showNew && <NewOrderModal clients={clients} orders={orders} onClose={() => setShowNew(false)} onSave={handleNewOrder} />}
+      {showNew && <NewOrderModal clients={clients} orders={orders} onClose={() => setShowNew(false)} onSave={handleNewOrder} products={products} />}
       {editingOrder && (
         <NewOrderModal
           clients={clients}
@@ -989,6 +1265,7 @@ function Orders({ orders, setOrders, clients }) {
           onClose={() => setEditingOrder(null)}
           onSave={handleEditOrder}
           initialOrder={editingOrder}
+          products={products}
         />
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -1402,7 +1679,7 @@ function ClientInfoModal({ client, orders, onClose, onEdit, onDelete }) {
 }
 
 // ─── ADD / EDIT CLIENT MODAL ──────────────────────────────────
-function AddClientModal({ onClose, onSave, initialClient }) {
+function AddClientModal({ onClose, onSave, initialClient, products }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const isEdit = !!initialClient;
   const [name, setName] = useState(initialClient?.name ?? "");
@@ -1434,7 +1711,7 @@ function AddClientModal({ onClose, onSave, initialClient }) {
         name: name.trim(),
         country: country.trim() || "🌍 Unknown",
         cashDebt: 0, wireDebt: 0,
-        prices: Object.fromEntries(ALL_PRODUCTS.map(p => [p.code, parseFloat((p.single * mult).toFixed(2))])),
+        prices: Object.fromEntries((products || ALL_PRODUCTS).map(p => [p.code, parseFloat((p.single * mult).toFixed(2))])),
         ...extra,
       });
     }
@@ -1491,7 +1768,7 @@ function AddClientModal({ onClose, onSave, initialClient }) {
 }
 
 // ─── CLIENTS ─────────────────────────────────────────────────
-function Clients({ clients, setClients, orders }) {
+function Clients({ clients, setClients, orders, products }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [editingId, setEditingId] = useState(null);
   const [editPrices, setEditPrices] = useState({});
@@ -1530,7 +1807,7 @@ function Clients({ clients, setClients, orders }) {
   return (
     <div>
       {toast && <Toast msg={toast} />}
-      {showPL && <PricelistModal clients={clients} onClose={() => setShowPL(false)} />}
+      {showPL && <PricelistModal clients={clients} products={products || ALL_PRODUCTS} onClose={() => setShowPL(false)} />}
       {selectedClient && (
         <ClientInfoModal
           client={selectedClient}
@@ -1544,6 +1821,7 @@ function Clients({ clients, setClients, orders }) {
         <AddClientModal
           onClose={() => setShowAddClient(false)}
           onSave={handleAddClient}
+          products={products}
         />
       )}
       {editingClient && (
@@ -1551,6 +1829,7 @@ function Clients({ clients, setClients, orders }) {
           onClose={() => setEditingClient(null)}
           onSave={handleEditClient}
           initialClient={editingClient}
+          products={products}
         />
       )}
       {confirmDeleteClientId && (
@@ -1574,7 +1853,8 @@ function Clients({ clients, setClients, orders }) {
       {clients.map(c => {
         const isEditing = editingId === c.id;
         const isExpanded = expandedId === c.id;
-        const prods = plTab === "alum" ? PRODUCTS_ALUM : PRODUCTS_BIMETAL;
+        const allProds = products || ALL_PRODUCTS;
+        const prods = allProds.filter(p => p.type === plTab);
         return (
           <div key={c.id} style={{ ...S.card, marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpandedId(isExpanded && !isEditing ? null : c.id)}>
@@ -1637,37 +1917,184 @@ function Clients({ clients, setClients, orders }) {
   );
 }
 
+// ─── ADD / EDIT PRODUCT MODAL ────────────────────────────────
+function AddProductModal({ onClose, onSave, initialProduct }) {
+  const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
+  const isEdit = !!initialProduct;
+  const [code, setCode] = useState(initialProduct?.code ?? "");
+  const [type, setType] = useState(initialProduct?.type ?? "alum");
+  const [raw, setRaw] = useState(String(initialProduct?.raw ?? ""));
+  const [single, setSingle] = useState(String(initialProduct?.single ?? ""));
+  const [spec, setSpec] = useState(initialProduct?.spec ?? "");
+  const [actual, setActual] = useState(initialProduct?.actual ?? "");
+  const [heat, setHeat] = useState(initialProduct?.heat != null ? String(initialProduct.heat) : "");
+
+  const handleSave = () => {
+    if (!code.trim() || !raw || !single) return;
+    onSave({
+      code: code.trim().toUpperCase(),
+      type,
+      raw: parseFloat(raw) || 0,
+      single: parseFloat(single) || 0,
+      spec: spec.trim(),
+      actual: actual.trim(),
+      heat: heat.trim() ? parseFloat(heat) || null : null,
+    });
+    onClose();
+  };
+
+  return (
+    <div style={{ ...S.overlay, zIndex: 300 }} onClick={onClose}>
+      <div style={{ ...S.modal, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+        <div style={S.modalHeader}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>
+            {isEdit ? `✏️ ${T.editProductTitle}: ${initialProduct.code}` : T.addModel}
+          </div>
+          <button style={S.closeBtn} onClick={onClose}>×</button>
+        </div>
+        <div style={S.modalBody}>
+          <div style={S.col}>
+            <div>
+              <label style={S.label}>{T.model} (Code) *</label>
+              <input style={S.input} placeholder="e.g. NWS-TE-500E" value={code}
+                onChange={e => setCode(e.target.value)} disabled={isEdit} />
+            </div>
+            <div>
+              <label style={S.label}>{T.productType} *</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[["alum", T.aluminum, C.yellow], ["bimetal", T.bimetal, C.cyan]].map(([k, label, col]) => (
+                  <button key={k} onClick={() => setType(k)} style={{
+                    flex: 1, cursor: "pointer", borderRadius: L ? 10 : 8,
+                    padding: L ? "10px 16px" : "8px 14px", fontSize: L ? 14 : 13,
+                    fontWeight: type === k ? 700 : 500,
+                    background: type === k ? col : `${col}15`,
+                    color: type === k ? "#fff" : col,
+                    border: `2px solid ${col}`, transition: "all 0.15s",
+                  }}>{label}</button>
+                ))}
+              </div>
+            </div>
+            <div style={S.grid2}>
+              <div>
+                <label style={S.label}>{T.rawWeight} (kg) *</label>
+                <input style={S.input} type="number" step="0.01" placeholder="0.00"
+                  value={raw} onChange={e => setRaw(e.target.value)} />
+              </div>
+              <div>
+                <label style={S.label}>{T.singleWeight} (kg) *</label>
+                <input style={S.input} type="number" step="0.01" placeholder="0.00"
+                  value={single} onChange={e => setSingle(e.target.value)} />
+              </div>
+            </div>
+            <div style={S.grid2}>
+              <div>
+                <label style={S.label}>{T.specMm}</label>
+                <input style={S.input} placeholder="500*80*96" value={spec} onChange={e => setSpec(e.target.value)} />
+              </div>
+              <div>
+                <label style={S.label}>{T.actualMm}</label>
+                <input style={S.input} placeholder="577*80*96" value={actual} onChange={e => setActual(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label style={S.label}>{T.heatKw} <span style={{ color: C.muted, fontWeight: 400, fontSize: 11 }}>({T.optionalFields?.split(" ")[0] ?? "optional"})</span></label>
+              <input style={S.input} type="number" placeholder="155" value={heat} onChange={e => setHeat(e.target.value)} />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={S.btnPrimary} onClick={handleSave}>{T.save}</button>
+              <button style={S.btn(C.muted)} onClick={onClose}>{T.cancel}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PRODUCTS ────────────────────────────────────────────────
-function Products() {
+function Products({ products, setProducts }) {
   const C = useC(); const T = useT(); const L = C.bg === LIGHT.bg; const S = mk(C, L);
   const [tab, setTab] = useState("alum");
-  const prods = tab === "alum" ? PRODUCTS_ALUM : PRODUCTS_BIMETAL;
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [confirmDeleteCode, setConfirmDeleteCode] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const prods = products.filter(p => p.type === tab);
+
+  const handleAdd = (product) => {
+    setProducts(prev => { const n = [...prev, product]; save("fos_products", n); return n; });
+    setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
+  };
+
+  const handleEdit = (updated) => {
+    setProducts(prev => {
+      const n = prev.map(p => p.code === updated.code ? updated : p);
+      save("fos_products", n); return n;
+    });
+    setEditingProduct(null);
+    setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
+  };
+
+  const handleDelete = () => {
+    setProducts(prev => { const n = prev.filter(p => p.code !== confirmDeleteCode); save("fos_products", n); return n; });
+    setConfirmDeleteCode(null);
+    setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
+  };
+
   return (
     <div>
+      {toast && <Toast msg={toast} />}
+      {showAdd && <AddProductModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
+      {editingProduct && <AddProductModal onClose={() => setEditingProduct(null)} onSave={handleEdit} initialProduct={editingProduct} />}
+      {confirmDeleteCode && (
+        <ConfirmModal
+          title={T.confirmDeleteProductTitle}
+          message={T.confirmDeleteProductMsg}
+          confirmLabel={T.confirmYes}
+          cancelLabel={T.confirmNo}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDeleteCode(null)}
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <div style={S.pageTitle}>{T.productsTitle}</div>
-        <button style={S.btnPrimary}>{T.addModel}</button>
+        <button style={S.btnPrimary} onClick={() => setShowAdd(true)}>{T.addModel}</button>
       </div>
       <div style={S.subtitle}>{T.productsSubtitle}</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {[["alum", T.aluminum, C.yellow], ["bimetal", T.bimetal, C.cyan]].map(([k, label, col]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ ...S.btn(col), fontWeight: tab === k ? 700 : 500, opacity: tab === k ? 1 : 0.65 }}>{label} ({k === "alum" ? PRODUCTS_ALUM.length : PRODUCTS_BIMETAL.length})</button>
+          <button key={k} onClick={() => setTab(k)} style={{ ...S.btn(col), fontWeight: tab === k ? 700 : 500, opacity: tab === k ? 1 : 0.65 }}>
+            {label} ({products.filter(p => p.type === k).length})
+          </button>
         ))}
       </div>
       <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={S.table}>
-            <thead><tr>{["№", T.model, T.rawWeight + "/KG", T.singleWeight + "/KG", T.specMm, T.actualMm, T.heatKw].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+            <thead><tr>
+              {["№", T.model, T.rawWeight + "/KG", T.singleWeight + "/KG", T.specMm, T.actualMm, T.heatKw, ""].map(h => (
+                <th key={h} style={S.th}>{h}</th>
+              ))}
+            </tr></thead>
             <tbody>
               {prods.map((p, i) => (
-                <tr key={p.code} onMouseEnter={e => e.currentTarget.style.background = `${C.accent}08`} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <tr key={p.code}
+                  onMouseEnter={e => e.currentTarget.style.background = `${C.accent}08`}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <td style={{ ...S.td, paddingLeft: 16, color: C.muted }}>{i + 1}</td>
                   <td style={S.td}><span style={{ fontWeight: 700, color: C.accent }}>{p.code}</span></td>
                   <td style={S.td}>{p.raw}</td>
                   <td style={S.td}>{p.single}</td>
-                  <td style={S.td}><span style={{ color: C.muted }}>{p.spec}</span></td>
-                  <td style={S.td}><span style={{ color: C.muted }}>{p.actual}</span></td>
-                  <td style={{ ...S.td, paddingRight: 16 }}>{p.heat ? <span style={{ color: C.yellow, fontWeight: 600 }}>{p.heat}W</span> : <span style={{ color: C.border }}>—</span>}</td>
+                  <td style={S.td}><span style={{ color: C.muted }}>{p.spec || "—"}</span></td>
+                  <td style={S.td}><span style={{ color: C.muted }}>{p.actual || "—"}</span></td>
+                  <td style={S.td}>{p.heat ? <span style={{ color: C.yellow, fontWeight: 600 }}>{p.heat}W</span> : <span style={{ color: C.border }}>—</span>}</td>
+                  <td style={{ ...S.td, paddingRight: 12 }}>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button style={S.btnSm(C.accent)} onClick={() => setEditingProduct(p)}>✏️</button>
+                      <button style={S.btnSm(C.red)} onClick={() => setConfirmDeleteCode(p.code)}>🗑</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1691,6 +2118,9 @@ export default function App() {
   const [orders, setOrders] = useState(() => normalizeOrders(load("fos_orders", DEFAULT_ORDERS)));
   const [clients, setClients] = useState(() => load("fos_clients", DEFAULT_CLIENTS));
   const [shipments, setShipments] = useState(() => load("fos_shipments", DEFAULT_SHIPMENTS));
+  const [products, setProducts] = useState(() => load("fos_products",
+    [...PRODUCTS_ALUM.map(p => ({ ...p, type: "alum" })), ...PRODUCTS_BIMETAL.map(p => ({ ...p, type: "bimetal" }))]
+  ));
   const dropdownRef = useRef(null);
 
   const C = isLight ? LIGHT : DARK;
@@ -1706,11 +2136,11 @@ export default function App() {
 
   const pages = {
     dashboard: <Dashboard orders={orders} clients={clients} shipments={shipments} />,
-    orders: <Orders orders={orders} setOrders={setOrders} clients={clients} />,
+    orders: <Orders orders={orders} setOrders={setOrders} clients={clients} products={products} />,
     debts: <Debts clients={clients} orders={orders} />,
     shipments: <Shipments shipments={shipments} setShipments={setShipments} />,
-    clients: <Clients clients={clients} setClients={setClients} orders={orders} />,
-    products: <Products />,
+    clients: <Clients clients={clients} setClients={setClients} orders={orders} products={products} />,
+    products: <Products products={products} setProducts={setProducts} />,
   };
 
   return (
