@@ -1,6 +1,0 @@
-{
-  "name": "FactoryOS Design Upgrade",
-  "description": "A premium redesign of FactoryOS featuring dynamic liquid glass design, smooth parallax effects, micro-interactions, complete localization (EN, RU, ZH, UZ), and interactive industrial telemetry simulators styled with high-contrast navy and electric lime.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
