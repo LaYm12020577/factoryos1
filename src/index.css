@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .glass {
+    @apply bg-white/40 backdrop-blur-glass border border-white/20 shadow-xl;
+  }
+  
+  .glass-dark {
+    @apply bg-brand-blue/40 backdrop-blur-glass border border-white/10 shadow-xl;
+  }
+
+  .liquid-glass {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 32, 69, 0.1);
+  }
+
+  .btn-primary {
+    @apply bg-brand-lime text-brand-blue font-bold px-6 py-2 rounded-full transition-all hover:scale-105 active:scale-95;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg transition-colors hover:bg-white/20;
+  }
+
+  .nav-link-active {
+    @apply bg-brand-lime text-brand-blue font-bold shadow-lg shadow-brand-lime/30;
+  }
+}
+
+body {
+  @apply bg-brand-white text-brand-blue overflow-x-hidden;
+  background: radial-gradient(circle at top right, #f8fafc, #f1f5f9);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-brand-blue/10 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-brand-blue/20;
+}
