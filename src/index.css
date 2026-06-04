@@ -50,3 +50,27 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-brand-blue/20;
 }
+
+/* Dark mode - fix brand-blue text colors to white in main content */
+.bg-slate-950 main [class*="text-brand-blue/10"]:not([class*="bg-white"]) {
+  color: rgba(255, 255, 255, 0.1) !important;
+}
+.bg-slate-950 main [class*="text-brand-blue/20"]:not([class*="bg-white"]) {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+.bg-slate-950 main [class*="text-brand-blue/30"]:not([class*="bg-white"]) {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+.bg-slate-950 main [class*="text-brand-blue/40"]:not([class*="bg-white"]) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.bg-slate-950 main [class*="text-brand-blue/50"]:not([class*="bg-white"]) {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.bg-slate-950 main [class*="text-brand-blue/60"]:not([class*="bg-white"]) {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+/* Base text-brand-blue without opacity suffix */
+.bg-slate-950 main [class*="text-brand-blue"]:not([class*="text-brand-blue/"]):not([class*="bg-white"]) {
+  color: rgba(255, 255, 255, 0.9) !important;
+}

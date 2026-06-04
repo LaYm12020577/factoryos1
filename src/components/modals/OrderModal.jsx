@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ClipboardList, Truck, Wallet, Plus, X, Globe } from "lucide-react";
+import { ClipboardList, Truck, Wallet, Plus, X, Globe, Trash2 } from "lucide-react";
 import { useT } from "../../hooks/useT";
 
 export function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, clients, products }) {
@@ -255,7 +255,7 @@ export function OrderModal({ order, onClose, onPaymentSaved, onEdit, onDelete, c
                 <ClipboardList size={20} />
               </button>
               <button className="p-3 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors" onClick={() => onDelete(order.id)}>
-                <X size={20} />
+                <Trash2 size={20} />
               </button>
               <button className="p-3 rounded-xl bg-brand-blue/5 text-brand-blue hover:bg-brand-blue/10 transition-colors" onClick={onClose}>
                 <X size={20} />
