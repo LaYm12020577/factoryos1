@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Package, Truck, Globe, X, Plus, ClipboardList } from "lucide-react";
+import { Package, Truck, Globe, X, Plus, Trash2 } from "lucide-react";
 import { useT } from "../../hooks/useT";
 import { save } from "../../utils/helpers";
+import { ShipmentDetailModal } from "../modals/ShipmentDetailModal";
+import { ConfirmModal } from "../ui/ConfirmModal";
 
 const Toast = ({ msg }) => (
   <div className="fixed bottom-24 left-50 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full font-bold shadow-xl z-[999]">
@@ -15,6 +17,9 @@ export function Shipments({ shipments, setShipments }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ from: "", items: "", eta: "", status: "ordered" });
   const [toast, setToast] = useState(null);
+  const [selectedShipment, setSelectedShipment] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+
   const statusMeta = {
     ordered: { color: 'slate', label: T.ordered, icon: <Package size={20}/> },
     in_transit: { color: 'blue', label: T.inTransit, icon: <Truck size={20}/> },
@@ -31,12 +36,22 @@ export function Shipments({ shipments, setShipments }) {
     setToast(T.savedMsg); setTimeout(() => setToast(null), 2000);
   };
 
-  const cycleStatus = (id) => {
-    const cycle = ["ordered", "in_transit", "customs", "arrived"];
+  const handleUpdateStatus = (id, newStatus) => {
     setShipments(prev => {
-      const n = prev.map(s => s.id === id ? { ...s, status: cycle[(cycle.indexOf(s.status) + 1) % cycle.length] } : s);
-      save("fos_shipments", n); return n;
+      const n = prev.map(s => s.id === id ? { ...s, status: newStatus } : s);
+      save("fos_shipments", n);
+      return n;
     });
+  };
+
+  const handleDeleteShipment = (id) => {
+    setShipments(prev => {
+      const n = prev.filter(s => s.id !== id);
+      save("fos_shipments", n);
+      return n;
+    });
+    setToast(`${T.deletedMsg} ✓`); 
+    setTimeout(() => setToast(null), 2000);
   };
 
   return (
@@ -109,7 +124,8 @@ export function Shipments({ shipments, setShipments }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="liquid-glass p-6 rounded-[2rem] group"
+              onClick={() => setSelectedShipment(s)}
+              className="liquid-glass p-6 rounded-[2rem] group cursor-pointer hover:shadow-lg transition-all"
             >
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-4">
@@ -125,13 +141,26 @@ export function Shipments({ shipments, setShipments }) {
                     <div className="text-xs font-bold text-brand-blue/30 uppercase tracking-widest">{s.from}</div>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest
-                   ${s.status === 'arrived' ? 'bg-green-100 text-green-700' : 
-                     s.status === 'in_transit' ? 'bg-blue-100 text-blue-700' : 
-                     s.status === 'customs' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-700'}
-                `}>
-                  {meta.label}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest
+                     ${s.status === 'arrived' ? 'bg-green-100 text-green-700' : 
+                       s.status === 'in_transit' ? 'bg-blue-100 text-blue-700' : 
+                       s.status === 'customs' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-700'}
+                  `}>
+                    {meta.label}
+                  </span>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteConfirm(s.id);
+                    }}
+                    className="p-2 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 size={16} />
+                  </motion.button>
+                </div>
               </div>
               
               <div className="space-y-4">
@@ -145,19 +174,39 @@ export function Shipments({ shipments, setShipments }) {
                   <div className="text-xs font-bold text-brand-blue">{s.eta || "—"}</div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button className="flex-1 bg-brand-blue text-white py-3 rounded-xl font-bold text-xs hover:bg-brand-blue/90 transition-all hover:shadow-lg hover:shadow-brand-blue/20" onClick={() => cycleStatus(s.id)}>
-                    {T.updateStatus}
-                  </button>
-                  <button className="bg-white border border-brand-blue/5 p-3 rounded-xl text-brand-blue/40 hover:text-brand-blue hover:bg-white transition-colors">
-                    <ClipboardList size={18} />
-                  </button>
+                <div className="text-xs font-medium text-brand-blue/50 text-center pt-2">
+                  {T.clickToEdit || "Нажмите на карточку для редактирования"}
                 </div>
               </div>
             </motion.div>
           );
         })}
       </div>
+
+      <AnimatePresence>
+        {selectedShipment && (
+          <ShipmentDetailModal
+            shipment={selectedShipment}
+            onClose={() => setSelectedShipment(null)}
+            onUpdate={handleUpdateStatus}
+            onDelete={handleDeleteShipment}
+          />
+        )}
+      </AnimatePresence>
+
+      {showDeleteConfirm && (
+        <ConfirmModal
+          title={T.deleteShipment || "Удалить доставку?"}
+          message={T.deleteShipmentMsg || "Это действие нельзя отменить"}
+          confirmLabel={T.delete}
+          cancelLabel={T.cancel}
+          onConfirm={() => {
+            handleDeleteShipment(showDeleteConfirm);
+            setShowDeleteConfirm(null);
+          }}
+          onCancel={() => setShowDeleteConfirm(null)}
+        />
+      )}
     </div>
   );
 }

@@ -132,16 +132,16 @@ export default function App() {
 
               <div className="hidden md:flex items-center gap-3 pl-4 border-l border-brand-blue/10">
                 <div className="text-right">
-                  <div className="text-xs font-bold text-brand-blue/40 uppercase tracking-widest leading-none mb-1">Role</div>
-                  <div className="text-sm font-bold text-brand-blue leading-none">Admin</div>
+                  <div className={`text-xs font-bold uppercase tracking-widest leading-none mb-1 ${isLight ? 'text-brand-blue/40' : 'text-white'}`}>Role</div>
+                  <div className={`text-sm font-bold leading-none ${isLight ? 'text-brand-blue' : 'text-white'}`}>Admin</div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-brand-blue flex items-center justify-center text-brand-lime font-bold shadow-lg shadow-brand-blue/20">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg ${isLight ? 'bg-brand-blue text-brand-lime shadow-brand-blue/20' : 'bg-brand-blue text-white shadow-brand-blue/20'}`}>
                   AD
                 </div>
               </div>
 
               <button 
-                className="md:hidden p-2 text-brand-blue"
+                className={`md:hidden p-2 ${isLight ? 'text-brand-blue' : 'text-white'}`}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
